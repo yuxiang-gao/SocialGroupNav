@@ -31,6 +31,8 @@ class CrowdSim(gym.Env):
         self.time_step = None
         self.robot = None
         self.humans = None
+        self.group_membership = None
+        self.individual_membership = None
         self.global_time = None
         self.robot_sensor_range = None
         # reward function
@@ -50,6 +52,11 @@ class CrowdSim(gym.Env):
         self.square_width = None
         self.circle_radius = None
         self.human_num = None
+
+        self.use_groups = None
+        self.min_group_num = None
+        self.max_group_num = None
+
         self.nonstop_human = None
         self.centralized_planning = None
         self.centralized_planner = None
@@ -93,6 +100,10 @@ class CrowdSim(gym.Env):
         self.circle_radius = config.sim.circle_radius
         self.human_num = config.sim.human_num
 
+        self.use_groups = config.sim.use_groups
+        self.min_group_num = config.sim.min_group_num
+        self.max_group_num = config.sim.max_group_num
+
         self.nonstop_human = config.sim.nonstop_human
         self.centralized_planning = config.sim.centralized_planning
         self.case_counter = {'train': 0, 'test': 0, 'val': 0}
@@ -113,6 +124,77 @@ class CrowdSim(gym.Env):
 
     def set_robot(self, robot):
         self.robot = robot
+
+    def generate_humans_in_groups(self, human_num):
+        self.humans = []
+        self.group_membership = []
+        self.individual_membership = []
+
+        # randomly select number of groups
+        num_groups = np.random.randint(low=self.min_group_num, high=self.max_group_num+1)
+
+        # randomly assign number of humans to groups, last value means no group association
+        group_dict = {human_list: 0 for human_list in range(num_groups+1)}
+
+        for i in range(human_num):
+            group_id = np.random.randint(low=0, high=num_groups+1)
+            group_dict[group_id] += 1
+
+        # group members should have colocated starting and ending positions
+        idx = 0
+        for i in range(num_groups):
+            if group_dict[i] > 0:
+                humans_in_group = self.generate_n_humans_in_group(group_dict[i])
+                self.humans = self.humans + humans_in_group
+                group_members = []
+                for _ in range(group_dict[i]):
+                    group_members.append(idx)
+                    idx += 1
+
+                self.group_membership.append(group_members)
+
+        # for each human in last group, treat as individual
+        for i in range(group_dict[num_groups]):
+            humans_in_group = self.generate_n_humans_in_group(1)
+            self.humans = self.humans + humans_in_group
+            self.individual_membership.append(idx)
+            idx += 1
+
+    # generate n humans in a group that have co-located starting and end positions
+    def generate_n_humans_in_group(self, humans_in_group=1):
+        if self.current_scenario == 'circle_crossing':
+
+            while True:
+                humans = []
+                angle = np.random.random() * np.pi * 2
+
+                for i in range(humans_in_group):
+                    human = Human(self.config, 'humans')
+                    if self.randomize_attributes:
+                        human.sample_random_attributes()
+
+                    # add some noise to simulate all the possible cases robot could meet with human
+                    px_noise = (np.random.random() - 0.5) * human.v_pref
+                    py_noise = (np.random.random() - 0.5) * human.v_pref
+                    px = self.circle_radius * np.cos(angle) + px_noise
+                    py = self.circle_radius * np.sin(angle) + py_noise
+                    human.set(px, py, -px, -py, 0, 0, 0)
+                    humans.append(human)
+
+                # check for collisions
+                for human in humans:
+                    collide = False
+                    for agent in [self.robot] + self.humans:
+                        min_dist = human.radius + agent.radius + self.discomfort_dist
+                        if norm((px - agent.px, py - agent.py)) < min_dist or \
+                                norm((px - agent.gx, py - agent.gy)) < min_dist:
+                            collide = True
+                            break
+
+                if not collide:
+                    break
+
+        return humans
 
     def generate_human(self, human=None):
         if human is None:
@@ -198,9 +280,14 @@ class CrowdSim(gym.Env):
             else:
                 self.current_scenario = self.test_scenario
                 human_num = self.human_num
-            self.humans = []
-            for _ in range(human_num):
-                self.humans.append(self.generate_human())
+
+            if self.use_groups:
+                self.generate_humans_in_groups(human_num)
+
+            else:
+                self.humans = []
+                for _ in range(human_num):
+                    self.humans.append(self.generate_human())
 
             # case_counter is always between 0 and case_size[phase]
             self.case_counter[phase] = (self.case_counter[phase] + 1) % self.case_size[phase]
@@ -257,9 +344,9 @@ class CrowdSim(gym.Env):
             agent_states = [human.get_full_state() for human in self.humans]
             if self.robot.visible:
                 agent_states.append(self.robot.get_full_state())
-                human_actions = self.centralized_planner.predict(agent_states)[:-1]
+                human_actions = self.centralized_planner.predict(agent_states, self.group_membership)[:-1]
             else:
-                human_actions = self.centralized_planner.predict(agent_states)
+                human_actions = self.centralized_planner.predict(agent_states, self.group_membership)
         else:
             human_actions = []
             for human in self.humans:
@@ -455,7 +542,18 @@ class CrowdSim(gym.Env):
             show_human_start_goal = False
 
             # add human start positions and goals
-            human_colors = [cmap(i) for i in range(len(self.humans))]
+            human_colors = []
+
+            for i in range(len(self.group_membership)):
+                group_color = cmap(i)
+                for _ in self.group_membership[i]:
+                    human_colors.append(group_color)
+
+            # the rest are individuals
+            for i in range(len(self.individual_membership)):
+                ind_color = cmap(len(self.group_membership) + i)
+                human_colors.append(ind_color)
+
             if show_human_start_goal:
                 for i in range(len(self.humans)):
                     human = self.humans[i]
@@ -486,7 +584,7 @@ class CrowdSim(gym.Env):
 
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]
-            humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False, color=cmap(i))
+            humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False, color=human_colors[i])
                       for i in range(len(self.humans))]
 
             # disable showing human numbers
@@ -549,7 +647,7 @@ class CrowdSim(gym.Env):
                 for i in range(self.human_num):
                     circles = []
                     for j in range(self.robot.policy.planning_depth):
-                        circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
+                        circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=human_colors[i])
                         ax.add_artist(circle)
                         circles.append(circle)
                     human_future_circles.append(circles)

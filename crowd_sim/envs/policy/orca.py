@@ -129,7 +129,7 @@ class CentralizedORCA(ORCA):
     def __init__(self):
         super().__init__()
 
-    def predict(self, state):
+    def predict(self, state, groups=None):
         """ Centralized planning for all agents """
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
         if self.sim is not None and self.sim.getNumAgents() != len(state):

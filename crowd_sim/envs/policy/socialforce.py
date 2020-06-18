@@ -19,10 +19,11 @@ class SocialForce(Policy):
     def set_phase(self, phase):
         return
 
-    def predict(self, state):
+    def predict(self, state, groups=None):
         """
 
         :param state:
+        :param groups
         :return:
         """
         sf_state = []
@@ -48,10 +49,9 @@ class SocialForce(Policy):
             sf_state.append(
                 (human_state.px, human_state.py, human_state.vx, human_state.vy, gx, gy)
             )
-        groups = None  # add group info here
         sim = Simulator(np.array(sf_state), groups=groups)
         sim.step()
-        action = ActionXY(sim.state[0, 2], sim.state[0, 3])
+        action = ActionXY(sim.peds.state[0, 2], sim.peds.state[0, 3])
 
         self.last_state = state
 
@@ -67,23 +67,27 @@ class CentralizedSocialForce(SocialForce):
     def __init__(self):
         super().__init__()
 
-    def predict(self, state):
+    def predict(self, state, groups=None):
         sf_state = []
         for agent_state in state:
+            # Set the preferred velocity to be a vector of unit magnitude (speed) in the direction of the goal.
+            velocity = np.array((agent_state.gx - agent_state.px, agent_state.gy - agent_state.py))
+            speed = np.linalg.norm(velocity)
+            pref_vel = velocity / speed if speed > 1 else velocity
+
             sf_state.append(
                 (
                     agent_state.px,
                     agent_state.py,
-                    agent_state.vx,
-                    agent_state.vy,
+                    pref_vel[0],
+                    pref_vel[1],
                     agent_state.gx,
                     agent_state.gy,
                 )
             )
-        groups = None
         sim = Simulator(np.array(sf_state), groups=groups)
         sim.step()
-        actions = [ActionXY(sim.state[i, 2], sim.state[i, 3]) for i in range(len(state))]
+        actions = [ActionXY(sim.peds.state[i, 2], sim.peds.state[i, 3]) for i in range(len(state))]
         del sim
 
         return actions

@@ -35,10 +35,13 @@ class BaseEnvConfig(object):
     sim.human_num = 5
     sim.nonstop_human = False
     sim.centralized_planning = True
+    sim.use_groups = True
+    sim.min_group_num = 1
+    sim.max_group_num = 3
 
     humans = Config()
     humans.visible = True
-    humans.policy = 'orca'
+    humans.policy = 'socialforce'
     humans.radius = 0.3
     humans.v_pref = 1
     humans.sensor = 'coordinates'
