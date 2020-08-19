@@ -621,6 +621,7 @@ class CrowdSim(gym.Env):
             # fig.clf()
             fig.canvas.draw()
             plt.pause(0.0001)
+            return self.states
 
         elif mode == "traj":
             fig, ax = plt.subplots(figsize=(7, 7))

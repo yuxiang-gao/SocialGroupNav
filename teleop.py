@@ -167,9 +167,6 @@ class PublishThread(threading.Thread):
 
             self.condition.release()
 
-            # # Publish.
-            # self.publisher.publish(twist)
-
         # Publish stop message when thread exits.
         self.twist = np.zeros(6)
 
@@ -213,8 +210,8 @@ done = False
 
 if __name__ == "__main__":
     settings = termios.tcgetattr(sys.stdin)
-    speed = 0.5
-    turn = 5.0
+    speed = 2
+    turn = 10
     repeat = 0.0
     key_timeout = 0.0
     if key_timeout == 0.0:
@@ -226,6 +223,8 @@ if __name__ == "__main__":
     z = 0
     th = 0
     status = 0
+
+    states = None
 
     try:
         pub_thread.update(x, y, z, th, speed, turn)
@@ -241,35 +240,8 @@ if __name__ == "__main__":
         # plt.ion()
         # fig.show()
         fig.canvas.draw()
-        while 1:
-            key = getKey(key_timeout, settings)
-            if key in moveBindings.keys():
-                x = moveBindings[key][0]
-                y = moveBindings[key][1]
-                z = moveBindings[key][2]
-                th = moveBindings[key][3]
-            elif key in speedBindings.keys():
-                speed = speed * speedBindings[key][0]
-                turn = turn * speedBindings[key][1]
-
-                print(vels(speed, turn))
-                if status == 14:
-                    print(msg)
-                status = (status + 1) % 15
-            else:
-                # Skip updating cmd_vel if key timeout and robot already
-                # stopped.
-                if key == "" and x == 0 and y == 0 and z == 0 and th == 0:
-                    continue
-                x = 0
-                y = 0
-                z = 0
-                th = 0
-                if key == "\x03":
-                    break
-
-            pub_thread.update(x, y, z, th, speed, turn)
-            # print(pub_thread.twist)
+        while not done:
+            action = robot.act(ob)
             state = robot.get_full_state()
             theta = robot.theta + np.deg2rad(pub_thread.th * pub_thread.turn)
             robot.theta = theta  # ActionXY does not have member v for non-holonomic agents, manually update theta now
@@ -289,13 +261,48 @@ if __name__ == "__main__":
                 f"Pos: {current_pos} Speed: {np.linalg.norm(current_pos - last_pos) / robot.time_step}"
             )
             last_pos = current_pos
-            # plt.ion()
-            env.render("teleop", plot=(fig, ax))
+            states = env.render("teleop", plot=(fig, ax))
+
+            key = getKey(key_timeout, settings)
+            if key in moveBindings.keys():
+                x = moveBindings[key][0]
+                y = moveBindings[key][1]
+                z = moveBindings[key][2]
+                th = moveBindings[key][3]
+            elif key in speedBindings.keys():
+                speed = speed * speedBindings[key][0]
+                turn = turn * speedBindings[key][1]
+
+                print(vels(speed, turn))
+                if status == 14:
+                    print(msg)
+                status = (status + 1) % 15
+            elif key == "s":
+                print("Save and quit.")
+                from pickle import dump
+
+                with open("states.pkl", "wb") as f:
+                    dump(states, f)
+                break
+            else:
+                # Skip updating cmd_vel if key timeout and robot already
+                # stopped.
+                if key == "" and x == 0 and y == 0 and z == 0 and th == 0:
+                    continue
+                x = 0
+                y = 0
+                z = 0
+                th = 0
+                if key == "\x03":
+                    break
+
+            pub_thread.update(x, y, z, th, speed, turn)
 
     except Exception as e:
         print(e)
 
     finally:
         pub_thread.stop()
-        env.render("video", "out")
+        plt.close()
+        # print(states)
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
