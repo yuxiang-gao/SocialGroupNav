@@ -517,7 +517,7 @@ class CrowdSim(gym.Env):
                 ob += [self.robot.get_observable_state()]
         return ob
 
-    def render(self, mode="video", output_file=None):
+    def render(self, mode="video", output_file=None, plot=None):
         from matplotlib import animation
         import matplotlib.pyplot as plt
 
@@ -529,7 +529,100 @@ class CrowdSim(gym.Env):
         arrow_style = patches.ArrowStyle("->", head_length=4, head_width=2)
         display_numbers = True
 
-        if mode == "traj":
+        if mode == "teleop":
+            fig, ax = plot
+            # fig, ax = plt.subplots(figsize=(7, 7))
+            # ax.tick_params(labelsize=16)
+            # ax.set_xlim(-5, 5)
+            # ax.set_ylim(-5, 5)
+            # ax.set_xlabel("x(m)", fontsize=16)
+            # ax.set_ylabel("y(m)", fontsize=16)
+
+            # add human start positions and goals
+            human_colors = [cmap(i) for i in range(len(self.humans))]
+            for i in range(len(self.humans)):
+                human = self.humans[i]
+                human_goal = mlines.Line2D(
+                    [human.get_goal_position()[0]],
+                    [human.get_goal_position()[1]],
+                    color=human_colors[i],
+                    marker="*",
+                    linestyle="None",
+                    markersize=15,
+                )
+                ax.add_artist(human_goal)
+                human_start = mlines.Line2D(
+                    [human.get_start_position()[0]],
+                    [human.get_start_position()[1]],
+                    color=human_colors[i],
+                    marker="o",
+                    linestyle="None",
+                    markersize=15,
+                )
+                ax.add_artist(human_start)
+
+            robot_positions = [self.states[i][0].position for i in range(len(self.states))]
+            human_positions = [
+                [self.states[i][1][j].position for j in range(len(self.humans))]
+                for i in range(len(self.states))
+            ]
+
+            for k in range(len(self.states)):
+                if k % 4 == 0 or k == len(self.states) - 1:
+                    robot = plt.Circle(
+                        robot_positions[k], self.robot.radius, fill=False, color=robot_color
+                    )
+                    humans = [
+                        plt.Circle(
+                            human_positions[k][i], self.humans[i].radius, fill=False, color=cmap(i)
+                        )
+                        for i in range(len(self.humans))
+                    ]
+                    ax.add_artist(robot)
+                    for human in humans:
+                        ax.add_artist(human)
+
+                # add time annotation
+                global_time = k * self.time_step
+                if global_time % 4 == 0 or k == len(self.states) - 1:
+                    agents = humans + [robot]
+                    times = [
+                        plt.text(
+                            agents[i].center[0] - x_offset,
+                            agents[i].center[1] - y_offset,
+                            "{:.1f}".format(global_time),
+                            color="black",
+                            fontsize=14,
+                        )
+                        for i in range(self.human_num + 1)
+                    ]
+                    for time in times:
+                        ax.add_artist(time)
+                if k != 0:
+                    nav_direction = plt.Line2D(
+                        (self.states[k - 1][0].px, self.states[k][0].px),
+                        (self.states[k - 1][0].py, self.states[k][0].py),
+                        color=robot_color,
+                        ls="solid",
+                    )
+                    human_directions = [
+                        plt.Line2D(
+                            (self.states[k - 1][1][i].px, self.states[k][1][i].px),
+                            (self.states[k - 1][1][i].py, self.states[k][1][i].py),
+                            color=cmap(i),
+                            ls="solid",
+                        )
+                        for i in range(self.human_num)
+                    ]
+                    ax.add_artist(nav_direction)
+                    for human_direction in human_directions:
+                        ax.add_artist(human_direction)
+            plt.legend([robot], ["Robot"], fontsize=16)
+            # fig.clf()
+            fig.canvas.draw()
+            plt.pause(0.0001)
+
+        elif mode == "traj":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
             ax.set_xlim(-5, 5)
@@ -617,7 +710,6 @@ class CrowdSim(gym.Env):
                     for human_direction in human_directions:
                         ax.add_artist(human_direction)
             plt.legend([robot], ["Robot"], fontsize=16)
-            # plt.ion()
             plt.show()
         elif mode == "video":
             fig, ax = plt.subplots(figsize=(7, 7))

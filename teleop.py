@@ -214,7 +214,7 @@ done = False
 if __name__ == "__main__":
     settings = termios.tcgetattr(sys.stdin)
     speed = 0.5
-    turn = 1.0
+    turn = 5.0
     repeat = 0.0
     key_timeout = 0.0
     if key_timeout == 0.0:
@@ -231,6 +231,16 @@ if __name__ == "__main__":
         pub_thread.update(x, y, z, th, speed, turn)
         print(msg)
         print(vels(speed, turn))
+
+        fig, ax = plt.subplots(figsize=(7, 7))
+        ax.tick_params(labelsize=16)
+        ax.set_xlim(-5, 5)
+        ax.set_ylim(-5, 5)
+        ax.set_xlabel("x(m)", fontsize=16)
+        ax.set_ylabel("y(m)", fontsize=16)
+        # plt.ion()
+        # fig.show()
+        fig.canvas.draw()
         while 1:
             key = getKey(key_timeout, settings)
             if key in moveBindings.keys():
@@ -261,7 +271,8 @@ if __name__ == "__main__":
             pub_thread.update(x, y, z, th, speed, turn)
             # print(pub_thread.twist)
             state = robot.get_full_state()
-            theta = pub_thread.th * pub_thread.turn
+            theta = robot.theta + np.deg2rad(pub_thread.th * pub_thread.turn)
+            robot.theta = theta  # ActionXY does not have member v for non-holonomic agents, manually update theta now
             x = pub_thread.x
             y = pub_thread.y
             vx = np.cos(theta) * x + np.sin(theta) * y
@@ -269,7 +280,6 @@ if __name__ == "__main__":
             vx *= pub_thread.speed
             vy *= pub_thread.speed
             action = ActionXY(vx, vy)
-            robot.theta = theta  # ActionXY does not have member v for non-holonomic agents, manually update theta now
 
             # action = robot.act(ob)
             ob, _, done, info = env.step(action)
@@ -280,7 +290,7 @@ if __name__ == "__main__":
             )
             last_pos = current_pos
             # plt.ion()
-            env.render("traj")
+            env.render("teleop", plot=(fig, ax))
 
     except Exception as e:
         print(e)
