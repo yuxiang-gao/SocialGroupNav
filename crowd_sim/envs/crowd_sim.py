@@ -140,7 +140,7 @@ class CrowdSim(gym.Env):
         self.robot = robot
 
     def set_obstacles(self, obs):
-        self.obstacles = obs
+        self.obstacles = np.array(obs)
 
     def generate_humans_in_groups(self, human_num):
         self.humans = []
