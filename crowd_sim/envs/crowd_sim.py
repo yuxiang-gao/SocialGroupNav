@@ -230,7 +230,7 @@ class CrowdSim(gym.Env):
                     # add some noise to simulate all the possible cases robot could meet with human
                     px_noise = (np.random.random() - 0.5) * human.v_pref
                     py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = 5 + px_noise
+                    px = 2.5 * np.random.choice([-1, 1]) + px_noise
                     py = 0 + py_noise
                     human.set(px, py, -px, py, 0, 0, 0)
                     humans.append(human)
