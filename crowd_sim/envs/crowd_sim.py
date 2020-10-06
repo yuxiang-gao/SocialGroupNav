@@ -179,6 +179,7 @@ class CrowdSim(gym.Env):
 
     # generate n humans in a group that have co-located starting and end positions
     def generate_n_humans_in_group(self, humans_in_group=1):
+        rng = np.random.default_rng()
         if self.current_scenario == "circle_crossing":
 
             while True:
@@ -257,20 +258,19 @@ class CrowdSim(gym.Env):
                     [0, 0, -width, 0],
                 ]
             )
-            center = np.random.choice([[-width, width / 2], [width / 2, -width]])  # choose a center
+            center, goal = np.random.choice(
+                [[-width, width / 2], [width / 2, -width]], 2, replace=False
+            )  # choose a center
             while True:
                 humans = []
-                angle = np.random.random() * np.pi * 2
 
                 for i in range(humans_in_group):
                     human = Human(self.config, "humans")
                     if self.randomize_attributes:
                         human.sample_random_attributes()
-                    px_noise = (np.random.random() - 0.5) * human.v_pref
-                    py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = center[0] + px_noise
-                    py = center[1] + py_noise
-                    human.set(px, py, -px, py, 0, 0, 0)
+                    noise = (np.random.random(2) - 0.5) * human.v_pref
+                    p = center + noise
+                    human.set(*p, *(goal + noise), 0, 0, 0)
                     humans.append(human)
 
                 # check for collisions
@@ -298,8 +298,8 @@ class CrowdSim(gym.Env):
                     [-width / 2, -width / 2, 0, -width],
                 ]
             )
-            center = np.random.choice(
-                [[-width, width / 2], [width, width / 2], [0, -width]]
+            center, goal = np.random.choice(
+                [[-width, width / 2], [width, width / 2], [0, -width]], 2, replace=False
             )  # choose a center
             while True:
                 humans = []
@@ -309,11 +309,9 @@ class CrowdSim(gym.Env):
                     human = Human(self.config, "humans")
                     if self.randomize_attributes:
                         human.sample_random_attributes()
-                    px_noise = (np.random.random() - 0.5) * human.v_pref
-                    py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = center[0] + px_noise
-                    py = center[1] + py_noise
-                    human.set(px, py, -px, py, 0, 0, 0)
+                     noise = (np.random.random(2) - 0.5) * human.v_pref
+                    p = center + noise
+                    human.set(*p, *(goal + noise), 0, 0, 0)
                     humans.append(human)
 
                 # check for collisions
