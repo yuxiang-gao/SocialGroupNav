@@ -217,7 +217,6 @@ class CrowdSim(gym.Env):
             sign = np.random.choice([-1, 1])
             while True:
                 humans = []
-                angle = np.random.random() * np.pi * 2
 
                 for i in range(humans_in_group):
                     human = Human(self.config, "humans")
