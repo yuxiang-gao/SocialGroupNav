@@ -158,8 +158,11 @@ class SceneManager(object):
                 (self.rng.random(2) - 0.5) * (self.human_radius * 2 + self.discomfort_dist) * size
             )
             spawn_pos = center + noise  # spawn noise based on group size
-            if self.check_collision(spawn_pos, humans):  # break if there is collision
-                continue
+            while True:
+                if not self.check_collision(spawn_pos, humans):  # break if there is no collision
+                    break
+                else:
+                    spawn_pos += noise / size * 0.5  # gentlely nudge the new ped to avoid collision
 
             human = Human(self.config, "humans")
             if self.randomize_attributes:

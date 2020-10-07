@@ -528,13 +528,24 @@ class CrowdSim(gym.Env):
         elif mode == "traj":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-5, 5)
+            ax.set_xlim(-10, 6)
+            ax.set_ylim(-10, 6)
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 
             # add human start positions and goals
-            human_colors = [cmap(i) for i in range(len(self.humans))]
+            # human_colors = [cmap(i) for i in range(len(self.humans))]
+            human_colors = []
+            for i in range(len(self.group_membership)):
+                group_color = cmap(i)
+                for _ in self.group_membership[i]:
+                    human_colors.append(group_color)
+
+            # the rest are individuals
+            for i in range(len(self.individual_membership)):
+                ind_color = cmap(len(self.group_membership) + i)
+                human_colors.append(ind_color)
+
             for i in range(len(self.humans)):
                 human = self.humans[i]
                 human_goal = mlines.Line2D(
