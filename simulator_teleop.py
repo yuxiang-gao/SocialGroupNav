@@ -3,14 +3,16 @@ import math
 import sys
 import pygame
 from pygame.locals import *
-class robot_render():
+
+
+class robot_render:
     def _init_(self):
         pygame.init()
         size = width, height = 600, 600
         speed = [2, 2]
         WHITE = [255, 255, 255]
         BLACK = [0, 0, 0]
-        RED = [255, 0 ,0]
+        RED = [255, 0, 0]
         GREEN = [0, 255, 0]
         BLUE = [0, 0, 255]
         screen = pygame.display.set_mode(size)
@@ -21,7 +23,7 @@ class robot_render():
             [self.states[i][1][j].position for j in range(len(self.humans))]
             for i in range(len(self.states))
         ]
-        rect = bot.get_rect(center = (robot_positions[0][0]))
+        rect = bot.get_rect(center=(robot_positions[0][0]))
         bot.fill(BLUE)
         state = 0
 
@@ -39,16 +41,16 @@ class robot_render():
         distance = math.sqrt(((p2[0] - p1[0]) ** 2) + ((p2[1] - p1[1]) ** 2))
         return distance
 
-    if _name_ == "_main_":
-        
+    if __name__ == "__main__":
+
         while not done:
             screen.fill(WHITE)
             elapsed = pygame.time.get_ticks()
-    
-            #Moving around:
+
+            # Moving around:
             #   u    i    o
             #   j    k    l
-            #   m    ,    .    
+            #   m    ,    .
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     sys.exit()
@@ -88,14 +90,20 @@ class robot_render():
                     if event.key == K_k:
                         state = 0
                         speed[0] = 0
-                        speed[1] = 0   
+                        speed[1] = 0
             human_colors = [cmap(i) for i in range(len(self.humans))]
             for k in range(len(self.states)):
                 global_time = k * self.time_step
                 if k % 4 == 0 or k == len(self.states) - 1:
                     rect = robot_positions[-1]
-                    pygame.draw.line(screen, BLACK, center_rect, (np.array(center_rect) + (20* np.array(speed))), 3)
-                    rect = bot.get_rect(center = robot_positions[k])
+                    pygame.draw.line(
+                        screen,
+                        BLACK,
+                        center_rect,
+                        (np.array(center_rect) + (20 * np.array(speed))),
+                        3,
+                    )
+                    rect = bot.get_rect(center=robot_positions[k])
                     bot.fill(BLUE)
                     rect.top += speed[1]
                     rect.left += speed[0]
@@ -109,13 +117,19 @@ class robot_render():
                         rect.right = 600
 
                     for i in range(len(self.humans)):
-                
+
                         color = human_colors[i]
                         human = self.humans[i]
                         human_direction = (self.states[k - 1][1][i].px, self.states[k][1][i].py)
-                
+
                         pygame.draw.circle(screen, color, human_positions[j][i], 10)
-                        pygame.draw.line(screen, BLACK, human_positions[j][i], (np.array(d) + (10* np.array(human_direction))), 3)   
-    
+                        pygame.draw.line(
+                            screen,
+                            BLACK,
+                            human_positions[j][i],
+                            (np.array(d) + (10 * np.array(human_direction))),
+                            3,
+                        )
+
             screen.blit(bot, rect)
             pygame.display.update()
