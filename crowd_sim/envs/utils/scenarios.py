@@ -81,12 +81,14 @@ class ScenarioConfig:
             p = self.circle_radius * np.array([np.cos(angle), np.sin(angle)])
             return p, -p
         else:
-            return np.random.choice(self.spawn_positions, 2, replace=False)
+            p_idx, g_idx = np.random.choice(range(len(self.spawn_positions)), 2, replace=False)
+            return self.spawn_positions[p_idx], self.spawn_positions[g_idx]
 
     def get_spawn_positions(self, groups):
         num_human = sum(groups)
         average_human = num_human / len(self.spawn_positions)  # avg human per spawn pos
-        sample_radius = average_human * (self.human_radius * 2 + self.discomfort_dist)
+        # sample_radius = average_human * (self.human_radius * 2 + self.discomfort_dist)
+        sample_radius = 1
         noise = self.rng.uniform(-sample_radius, sample_radius, 2)
         center, goal = self.get_spawn_position()
         return center + noise, goal + noise
@@ -127,7 +129,8 @@ class SceneManager(object):
             while True:
                 size = self.rng.poisson(group_size_lambda) + 1
                 if sum(group_sizes) + size > num_human:
-                    group_sizes.append(num_human - sum(group_sizes))
+                    if num_human > sum(group_sizes):
+                        group_sizes.append(num_human - sum(group_sizes))
                     break
                 else:
                     group_sizes.append(size)
@@ -136,10 +139,13 @@ class SceneManager(object):
         human_idx = np.arange(num_human)
         self.membership = self.split_array(human_idx, group_sizes)
 
+        print(group_sizes)
         for i, size in enumerate(group_sizes):
             center, goal = self.scenario_config.get_spawn_positions(group_sizes)
+            # print(size, center, goal)
+            # print(self.humans)
+            print(f"Spawn group {i} of size {size}, center: {center}, goal: {goal}")
             self.humans += self.spawn_group(size, center, goal)
-            logging.info(f"Spawn group {i}, center: {center}, goal: {goal}")
 
     def spawn_group(self, size, center, goal):
         humans = []
@@ -149,7 +155,7 @@ class SceneManager(object):
             )
             spawn_pos = center + noise  # spawn noise based on group size
             if self.check_collision(spawn_pos, humans):  # break if there is collision
-                break
+                continue
 
             human = Human(self.config, "humans")
             if self.randomize_attributes:

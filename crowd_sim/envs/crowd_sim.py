@@ -146,7 +146,9 @@ class CrowdSim(gym.Env):
 
     def set_scene(self, scenario=None):
         current_scenario = scenario if scenario is not None else self.current_scenario
+        print(current_scenario)
         self.scene_manager = SceneManager(current_scenario, self.robot, self.config)
+        self.current_scenario = current_scenario
 
     def reset(self, phase="test", test_case=None):
         """
@@ -178,13 +180,13 @@ class CrowdSim(gym.Env):
                 logging.debug(
                     "current test seed is:{}".format(base_seed[phase] + self.case_counter[phase])
                 )
-            if not self.robot.policy.multiagent_training and phase in ["train", "val"]:
-                # only CADRL trains in circle crossing simulation
-                human_num = 1
-                self.current_scenario = "circle_crossing"
-            else:
-                self.current_scenario = self.test_scenario
-                human_num = self.human_num
+            # if not self.robot.policy.multiagent_training and phase in ["train", "val"]:
+            #     # only CADRL trains in circle crossing simulation
+            #     human_num = 1
+            #     self.current_scenario = "circle_crossing"
+            # else:
+            #     self.current_scenario = self.test_scenario
+            #     human_num = self.human_num
 
             # self.generate_humans_in_groups(human_num)
             self.scene_manager.spawn(num_human=self.human_num, use_groups=self.use_groups)
@@ -412,13 +414,13 @@ class CrowdSim(gym.Env):
         if mode == "traj":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-5, 5)
+            ax.set_xlim(-5.5, 5.5)
+            ax.set_ylim(-5.5, 5.5)
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 
-            for s in self.obstacles:
-                ax.plot(s[:, 0], s[:, 1], "-o", color="black", markersize=2.5)
+            for ob in self.obstacles:
+                ax.plot(ob[:2], ob[2:4], "-o", color="black", markersize=2.5)
 
             # add human start positions and goals
             human_colors = [cmap(i) for i in range(len(self.humans))]
@@ -454,6 +456,7 @@ class CrowdSim(gym.Env):
                     robot = plt.Circle(
                         robot_positions[k], self.robot.radius, fill=False, color=robot_color
                     )
+                    plt.legend([robot], ["Robot"], fontsize=16)
                     humans = [
                         plt.Circle(
                             human_positions[k][i], self.humans[i].radius, fill=False, color=cmap(i)
@@ -499,7 +502,7 @@ class CrowdSim(gym.Env):
                     ax.add_artist(nav_direction)
                     for human_direction in human_directions:
                         ax.add_artist(human_direction)
-            plt.legend([robot], ["Robot"], fontsize=16)
+
             plt.show()
         elif mode == "video":
             fig, ax = plt.subplots(figsize=(7, 7))
