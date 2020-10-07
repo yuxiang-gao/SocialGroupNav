@@ -413,8 +413,8 @@ class CrowdSim(gym.Env):
         if mode == "traj":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            ax.set_xlim(-10, 6)
-            ax.set_ylim(-10, 6)
+            ax.set_xlim(-7, 7)
+            ax.set_ylim(-7, 7)
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 

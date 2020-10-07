@@ -88,8 +88,8 @@ class ScenarioConfig:
         if self.scenario == Scenario.CIRCLE_CROSSING:
             return self.get_spawn_position()
         else:
-            num_human = sum(groups)
-            average_human = num_human / len(self.spawn_positions)  # avg human per spawn pos
+            # num_human = sum(groups)
+            # average_human = num_human / len(self.spawn_positions)  # avg human per spawn pos
             # sample_radius = average_human * (self.human_radius * 2 + self.discomfort_dist)
             sample_radius = 1
             noise = self.rng.uniform(-sample_radius, sample_radius, 2)
