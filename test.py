@@ -18,9 +18,6 @@ from crowd_nav.utils.trainer import VNRLTrainer, MPRLTrainer
 from crowd_nav.utils.memory import ReplayMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
-
-
-# %%
 from crowd_nav.configs.icra_benchmark.config import (
     BaseEnvConfig,
     BasePolicyConfig,
@@ -28,7 +25,7 @@ from crowd_nav.configs.icra_benchmark.config import (
     Config,
 )
 
-
+# %%
 class EnvConfig(BaseEnvConfig):
     def __init__(self, debug=False):
         super(EnvConfig, self).__init__(debug)
@@ -51,8 +48,6 @@ robot.policy.multiagent_training = True
 env.set_robot(robot)
 # env.set_scene("corner")
 
-
-# %%
 rewards = []
 ob = env.reset()
 env.render("traj")

@@ -526,8 +526,8 @@ class CrowdSim(gym.Env):
             # add human start positions and goals
             human_colors = []
 
-            for s in self.obstacles:
-                ax.plot(s[:, 0], s[:, 1], "-o", color="black", markersize=2.5)
+            for ob in self.obstacles:
+                ax.plot(ob[:2], ob[2:4], "-o", color="black", markersize=2.5)
 
             for i in range(len(self.group_membership)):
                 group_color = cmap(i)
