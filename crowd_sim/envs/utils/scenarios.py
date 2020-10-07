@@ -9,16 +9,27 @@ from crowd_sim.envs.utils.human import Human
 
 
 class Scenario(Enum):
-    CIRCLE_CROSSING = 1
-    CORRIDOR = 2
-    CORNER = 3
-    T_INTERSECTION = 4
+    CIRCLE_CROSSING = "circle_crossing"
+    CORRIDOR = "corridor"
+    CORNER = "corner"
+    T_INTERSECTION = "t_intersection"
+
+    @classmethod
+    def find(cls, name):
+        for i in cls:
+            if name in i.value:
+                return i
 
 
 class ScenarioConfig:
-    def __init__(self, scenario):
+    def __init__(self, scenario, config):
         self.rng = np.random.default_rng()
-        self.scenario = scenario
+        if type(scenario) == Scenario:
+            self.scenario = scenario
+        else:
+            self.scenario = Scenario.find(scenario)
+        self.configure(config)
+
         self.obstacles = []
         self.spawn_positions = []
         self.width = 5
@@ -61,8 +72,8 @@ class ScenarioConfig:
     def configure(self, config):
         self.v_pref = config.humans.v_pref
         self.circle_radius = config.sim.circle_radius
-        self.human_radius = self.config.humans.radius
-        self.discomfort_dist = self.config.reward.discomfort_dist
+        self.human_radius = config.humans.radius
+        self.discomfort_dist = config.reward.discomfort_dist
 
     def get_spawn_position(self):  # return (center, goal), no noise
         if self.scenario == Scenario.CIRCLE_CROSSING:
@@ -82,25 +93,48 @@ class ScenarioConfig:
 
 
 class SceneManager(object):
-    def __init__(self, scenario, robot):
-        self.scenario_config = ScenarioConfig(scenario)
+    def __init__(self, scenario, robot, config):
+        self.scenario_config = ScenarioConfig(scenario, config)
+        self.configure(config)
+
         self.robot = robot
         self.humans = []
-        self.group_membership = []
+        self.membership = []
 
         self.rng = np.random.default_rng()
 
     def configure(self, config):
-        self.scenario_config.configure(config)
         self.config = config
         self.human_radius = self.config.humans.radius
         self.discomfort_dist = self.config.reward.discomfort_dist
         self.randomize_attributes = self.config.env.randomize_attributes
 
-    def spawn(self, num_groups=5, group_size_lambda=1.5):
-        group_sizes = self.rng.poisson(group_size_lambda, num_groups) + 1  # no zeros
-        human_idx = np.array(range(sum(group_sizes)))
-        self.group_membership = self.split_array(human_idx, group_sizes)
+    def get_scene(self):
+        group_membership = []
+        individual_membership = []
+        for group in self.membership:
+            if len(group) == 1:
+                individual_membership.append(*group)
+            else:
+                group_membership.append(group)
+        return self.humans, self.scenario_config.obstacles, group_membership, individual_membership
+
+    def spawn(self, num_human=5, group_size_lambda=1.2, use_groups=True):
+        # group_sizes = self.rng.poisson(group_size_lambda, num_groups) + 1  # no zeros
+        # human_idx = np.array(range(sum(group_sizes)))
+        if use_groups:
+            group_sizes = []
+            while True:
+                size = self.rng.poisson(group_size_lambda) + 1
+                if sum(group_sizes) + size > num_human:
+                    group_sizes.append(num_human - sum(group_sizes))
+                    break
+                else:
+                    group_sizes.append(size)
+        else:
+            group_sizes = np.ones(num_human)
+        human_idx = np.arange(num_human)
+        self.membership = self.split_array(human_idx, group_sizes)
 
         for i, size in enumerate(group_sizes):
             center, goal = self.scenario_config.get_spawn_positions(group_sizes)
@@ -141,7 +175,7 @@ class SceneManager(object):
     def split_array(array, split):
         # split array into subarrays of variable lengths
         assert len(array) == sum(split), "sum of splits must equal to array length!"
-        assert type(array) == np.ndarray, "Input must be a ndarray"
+        assert type(array) == np.ndarray, "Input must be an ndarray"
         output_array = []
         idx = 0
         for s in split:

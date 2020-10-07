@@ -14,6 +14,7 @@ from crowd_sim.envs.utils.action import ActionRot
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
 from crowd_sim.envs.utils.utils import point_to_segment_dist
+from crowd_sim.envs.utils.scenarios import Scenario, ScenarioConfig, SceneManager
 
 
 class CrowdSim(gym.Env):
@@ -31,6 +32,7 @@ class CrowdSim(gym.Env):
         self.time_step = None
         self.robot = None
         self.humans = None
+        self.scene_manager = None
         self.group_membership = None
         self.individual_membership = None
         self.global_time = None
@@ -142,257 +144,9 @@ class CrowdSim(gym.Env):
     def set_obstacles(self, obs):
         self.obstacles = np.array(obs)
 
-    def generate_humans_in_groups(self, human_num):
-        self.humans = []
-        self.group_membership = []
-        self.individual_membership = []
-
-        # randomly select number of groups
-        num_groups = np.random.randint(low=self.min_group_num, high=self.max_group_num + 1)
-
-        # randomly assign number of humans to groups, last value means no group association
-        group_dict = {human_list: 0 for human_list in range(num_groups + 1)}
-
-        for i in range(human_num):
-            group_id = np.random.randint(low=0, high=num_groups + 1)
-            group_dict[group_id] += 1
-
-        # group members should have colocated starting and ending positions
-        idx = 0
-        for i in range(num_groups):
-            if group_dict[i] > 0:
-                humans_in_group = self.generate_n_humans_in_group(group_dict[i])
-                self.humans = self.humans + humans_in_group
-                group_members = []
-                for _ in range(group_dict[i]):
-                    group_members.append(idx)
-                    idx += 1
-
-                self.group_membership.append(group_members)
-
-        # for each human in last group, treat as individual
-        for i in range(group_dict[num_groups]):
-            humans_in_group = self.generate_n_humans_in_group(1)
-            self.humans = self.humans + humans_in_group
-            self.individual_membership.append(idx)
-            idx += 1
-
-    # generate n humans in a group that have co-located starting and end positions
-    def generate_n_humans_in_group(self, humans_in_group=1):
-        if self.current_scenario == "circle_crossing":
-
-            while True:
-                humans = []
-                angle = np.random.random() * np.pi * 2
-
-                for i in range(humans_in_group):
-                    human = Human(self.config, "humans")
-                    if self.randomize_attributes:
-                        human.sample_random_attributes()
-
-                    # add some noise to simulate all the possible cases robot could meet with human
-                    px_noise = (np.random.random() - 0.5) * human.v_pref
-                    py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = self.circle_radius * np.cos(angle) + px_noise
-                    py = self.circle_radius * np.sin(angle) + py_noise
-                    human.set(px, py, -px, -py, 0, 0, 0)
-                    humans.append(human)
-
-                # check for collisions
-                for human in humans:
-                    collide = False
-                    for agent in [self.robot] + self.humans:
-                        min_dist = human.radius + agent.radius + self.discomfort_dist
-                        if (
-                            norm((px - agent.px, py - agent.py)) < min_dist
-                            or norm((px - agent.gx, py - agent.gy)) < min_dist
-                        ):
-                            collide = True
-                            break
-
-                if not collide:
-                    break
-        elif self.current_scenario == "corridor":
-            self.set_obstacles([[-5, 5, 2, 2], [-5, 5, -2, -2]])
-            sign = np.random.choice([-1, 1])
-            while True:
-                humans = []
-
-                for i in range(humans_in_group):
-                    human = Human(self.config, "humans")
-                    if self.randomize_attributes:
-                        human.sample_random_attributes()
-
-                    # add some noise to simulate all the possible cases robot could meet with human
-                    px_noise = (np.random.random() - 0.5) * human.v_pref
-                    py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = 5 * sign + px_noise
-                    py = 0 + py_noise
-                    human.set(px, py, -px, py, 0, 0, 0)
-                    humans.append(human)
-
-                # check for collisions
-                for human in humans:
-                    collide = False
-                    for agent in [self.robot] + self.humans:
-                        min_dist = human.radius + agent.radius + self.discomfort_dist
-                        if (
-                            norm((px - agent.px, py - agent.py)) < min_dist
-                            or norm((px - agent.gx, py - agent.gy)) < min_dist
-                        ):
-                            collide = True
-                            break
-
-                if not collide:
-                    break
-
-        elif self.current_scenario == "corner":
-            width = 5
-            self.set_obstacles(
-                [
-                    [-width, width, width, width],
-                    [-width, 0, 0, 0],
-                    [width, width, -width, width],
-                    [0, 0, -width, 0],
-                ]
-            )
-            center = np.random.choice([[-width, width / 2], [width / 2, -width]])  # choose a center
-            while True:
-                humans = []
-                angle = np.random.random() * np.pi * 2
-
-                for i in range(humans_in_group):
-                    human = Human(self.config, "humans")
-                    if self.randomize_attributes:
-                        human.sample_random_attributes()
-                    px_noise = (np.random.random() - 0.5) * human.v_pref
-                    py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = center[0] + px_noise
-                    py = center[1] + py_noise
-                    human.set(px, py, -px, py, 0, 0, 0)
-                    humans.append(human)
-
-                # check for collisions
-                for human in humans:
-                    collide = False
-                    for agent in [self.robot] + self.humans:
-                        min_dist = human.radius + agent.radius + self.discomfort_dist
-                        if (
-                            norm((px - agent.px, py - agent.py)) < min_dist
-                            or norm((px - agent.gx, py - agent.gy)) < min_dist
-                        ):
-                            collide = True
-                            break
-
-                if not collide:
-                    break
-        elif self.current_scenario == "t_intersection":
-            width = 5
-            self.set_obstacles(
-                [
-                    [-width, width, width, width],
-                    [-width, -width / 2, 0, 0],
-                    [width / 2, width, 0, 0],
-                    [width / 2, width / 2, 0, -width],
-                    [-width / 2, -width / 2, 0, -width],
-                ]
-            )
-            center = np.random.choice(
-                [[-width, width / 2], [width, width / 2], [0, -width]]
-            )  # choose a center
-            while True:
-                humans = []
-                angle = np.random.random() * np.pi * 2
-
-                for i in range(humans_in_group):
-                    human = Human(self.config, "humans")
-                    if self.randomize_attributes:
-                        human.sample_random_attributes()
-                    px_noise = (np.random.random() - 0.5) * human.v_pref
-                    py_noise = (np.random.random() - 0.5) * human.v_pref
-                    px = center[0] + px_noise
-                    py = center[1] + py_noise
-                    human.set(px, py, -px, py, 0, 0, 0)
-                    humans.append(human)
-
-                # check for collisions
-                for human in humans:
-                    collide = False
-                    for agent in [self.robot] + self.humans:
-                        min_dist = human.radius + agent.radius + self.discomfort_dist
-                        if (
-                            norm((px - agent.px, py - agent.py)) < min_dist
-                            or norm((px - agent.gx, py - agent.gy)) < min_dist
-                        ):
-                            collide = True
-                            break
-
-                if not collide:
-                    break
-
-        return humans
-
-    def generate_human(self, human=None):
-        if human is None:
-            human = Human(self.config, "humans")
-        if self.randomize_attributes:
-            human.sample_random_attributes()
-
-        if self.current_scenario == "circle_crossing":
-            while True:
-                angle = np.random.random() * np.pi * 2
-                # add some noise to simulate all the possible cases robot could meet with human
-                px_noise = (np.random.random() - 0.5) * human.v_pref
-                py_noise = (np.random.random() - 0.5) * human.v_pref
-                px = self.circle_radius * np.cos(angle) + px_noise
-                py = self.circle_radius * np.sin(angle) + py_noise
-                collide = False
-                for agent in [self.robot] + self.humans:
-                    min_dist = human.radius + agent.radius + self.discomfort_dist
-                    if (
-                        norm((px - agent.px, py - agent.py)) < min_dist
-                        or norm((px - agent.gx, py - agent.gy)) < min_dist
-                    ):
-                        collide = True
-                        break
-                if not collide:
-                    break
-            human.set(px, py, -px, -py, 0, 0, 0)
-
-        elif self.current_scenario == "square_crossing":
-            if np.random.random() > 0.5:
-                sign = -1
-            else:
-                sign = 1
-            while True:
-                px = np.random.random() * self.square_width * 0.5 * sign
-                py = (np.random.random() - 0.5) * self.square_width
-                collide = False
-                for agent in [self.robot] + self.humans:
-                    if (
-                        norm((px - agent.px, py - agent.py))
-                        < human.radius + agent.radius + self.discomfort_dist
-                    ):
-                        collide = True
-                        break
-                if not collide:
-                    break
-            while True:
-                gx = np.random.random() * self.square_width * 0.5 * -sign
-                gy = (np.random.random() - 0.5) * self.square_width
-                collide = False
-                for agent in [self.robot] + self.humans:
-                    if (
-                        norm((gx - agent.gx, gy - agent.gy))
-                        < human.radius + agent.radius + self.discomfort_dist
-                    ):
-                        collide = True
-                        break
-                if not collide:
-                    break
-            human.set(px, py, gx, gy, 0, 0, 0)
-
-        return human
+    def set_scene(self, scenario=None):
+        current_scenario = scenario if scenario is not None else self.current_scenario
+        self.scene_manager = SceneManager(current_scenario, self.robot, self.config)
 
     def reset(self, phase="test", test_case=None):
         """
@@ -415,6 +169,8 @@ class CrowdSim(gym.Env):
         }
 
         self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, np.pi / 2)
+        self.scene_manager = SceneManager(self.current_scenario, self.robot, self.config)
+        
         if self.case_counter[phase] >= 0:
             np.random.seed(base_seed[phase] + self.case_counter[phase])
             random.seed(base_seed[phase] + self.case_counter[phase])
@@ -430,13 +186,14 @@ class CrowdSim(gym.Env):
                 self.current_scenario = self.test_scenario
                 human_num = self.human_num
 
-            if self.use_groups:
-                self.generate_humans_in_groups(human_num)
-
-            else:
-                self.humans = []
-                for _ in range(human_num):
-                    self.humans.append(self.generate_human())
+            # self.generate_humans_in_groups(human_num)
+            self.scene_manager.spawn(num_human=self.human_num, self.use_groups)
+            (
+                self.humans,
+                self.obstacles,
+                self.group_membership,
+                self.individual_membership,
+            ) = self.scene_manager.get_scene()
 
             # case_counter is always between 0 and case_size[phase]
             self.case_counter[phase] = (self.case_counter[phase] + 1) % self.case_size[phase]
