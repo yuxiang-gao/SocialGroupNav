@@ -422,7 +422,18 @@ class CrowdSim(gym.Env):
                 ax.plot(ob[:2], ob[2:4], "-o", color="black", markersize=2.5)
 
             # add human start positions and goals
-            human_colors = [cmap(i) for i in range(len(self.humans))]
+            # human_colors = [cmap(i) for i in range(len(self.humans))]
+            human_colors = []
+            for i in range(len(self.group_membership)):
+                group_color = cmap(i)
+                for _ in self.group_membership[i]:
+                    human_colors.append(group_color)
+
+            # the rest are individuals
+            for i in range(len(self.individual_membership)):
+                ind_color = cmap(len(self.group_membership) + i)
+                human_colors.append(ind_color)
+
             for i in range(len(self.humans)):
                 human = self.humans[i]
                 human_goal = mlines.Line2D(
