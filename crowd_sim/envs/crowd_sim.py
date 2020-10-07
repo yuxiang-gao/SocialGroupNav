@@ -170,7 +170,7 @@ class CrowdSim(gym.Env):
 
         self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, np.pi / 2)
         self.scene_manager = SceneManager(self.current_scenario, self.robot, self.config)
-        
+
         if self.case_counter[phase] >= 0:
             np.random.seed(base_seed[phase] + self.case_counter[phase])
             random.seed(base_seed[phase] + self.case_counter[phase])
@@ -187,7 +187,7 @@ class CrowdSim(gym.Env):
                 human_num = self.human_num
 
             # self.generate_humans_in_groups(human_num)
-            self.scene_manager.spawn(num_human=self.human_num, self.use_groups)
+            self.scene_manager.spawn(num_human=self.human_num, use_groups=self.use_groups)
             (
                 self.humans,
                 self.obstacles,
