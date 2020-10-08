@@ -82,7 +82,6 @@ class ScenarioConfig:
             return p, -p
         else:
             p_idx, g_idx = np.random.choice(range(len(self.spawn_positions)), 2, replace=False)
-            print(self.spawn_positions, p_idx, g_idx)
             return self.spawn_positions[p_idx], self.spawn_positions[g_idx]
 
     def get_spawn_positions(self, groups=None):
@@ -157,12 +156,10 @@ class SceneManager(object):
         human_idx = np.arange(num_human)
         self.membership = self.split_array(human_idx, group_sizes)
 
-        print(group_sizes)
+        logging.info(f"Generating groups of size: {group_sizes}")
         for i, size in enumerate(group_sizes):
             center, goal = self.scenario_config.get_spawn_positions(group_sizes)
-            # print(size, center, goal)
-            # print(self.humans)
-            print(f"Spawn group {i} of size {size}, center: {center}, goal: {goal}")
+            logging.info(f"Spawn group {i} of size {size}, center: {center}, goal: {goal}")
             self.humans += self.spawn_group(size, center, goal)
 
     def spawn_group(self, size, center, goal):

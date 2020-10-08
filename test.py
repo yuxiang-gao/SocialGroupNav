@@ -24,6 +24,12 @@ import configparser
 # %%
 from pathlib import Path
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s, %(levelname)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 env_config_file = Path(__file__).parent / "crowd_nav/configs/corridor_0.config"
 print(env_config_file)
 env_config = configparser.RawConfigParser()
