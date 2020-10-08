@@ -55,7 +55,7 @@ class ORCA(Policy):
         super().__init__()
         self.name = 'ORCA'
         self.trainable = False
-        self.multiagent_training = True
+        self.multiagent_training = None
         self.kinematics = 'holonomic'
         self.safety_space = 0
         self.neighbor_dist = 10
@@ -65,8 +65,22 @@ class ORCA(Policy):
         self.radius = 0.3
         self.max_speed = 1
         self.sim = None
+        self.randomize_attributes = False
 
     def configure(self, config):
+        # self.time_step = config.getfloat('orca', 'time_step')
+        # self.neighbor_dist = config.getfloat('orca', 'neighbor_dist')
+        # self.max_neighbors = config.getint('orca', 'max_neighbors')
+        # self.time_horizon = config.getfloat('orca', 'time_horizon')
+        # self.time_horizon_obst = config.getfloat('orca', 'time_horizon_obst')
+        # self.radius = config.getfloat('orca', 'radius')
+        # self.max_speed = config.getfloat('orca', 'max_speed')
+        ##### Used for running Kapil's out-of-distribution experiments ###############
+        self.randomize_attributes = config.getboolean('env', 'randomize_attributes')
+        if self.randomize_attributes:
+            self.neighbor_dist = np.random.uniform(2, 20)
+            self.time_horizon = np.random.uniform(0.1, 5)
+        ##############################################################################
         return
 
     def set_phase(self, phase):
@@ -83,27 +97,27 @@ class ORCA(Policy):
         :param state:
         :return:
         """
-        robot_state = state.robot_state
+        self_state = state.self_state
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
         if self.sim is not None and self.sim.getNumAgents() != len(state.human_states) + 1:
             del self.sim
             self.sim = None
         if self.sim is None:
             self.sim = rvo2.PyRVOSimulator(self.time_step, *params, self.radius, self.max_speed)
-            self.sim.addAgent(robot_state.position, *params, robot_state.radius + 0.01 + self.safety_space,
-                              robot_state.v_pref, robot_state.velocity)
+            self.sim.addAgent(self_state.position, *params, self_state.radius + 0.01 + self.safety_space,
+                              self_state.v_pref, self_state.velocity)
             for human_state in state.human_states:
                 self.sim.addAgent(human_state.position, *params, human_state.radius + 0.01 + self.safety_space,
                                   self.max_speed, human_state.velocity)
         else:
-            self.sim.setAgentPosition(0, robot_state.position)
-            self.sim.setAgentVelocity(0, robot_state.velocity)
+            self.sim.setAgentPosition(0, self_state.position)
+            self.sim.setAgentVelocity(0, self_state.velocity)
             for i, human_state in enumerate(state.human_states):
                 self.sim.setAgentPosition(i + 1, human_state.position)
                 self.sim.setAgentVelocity(i + 1, human_state.velocity)
 
         # Set the preferred velocity to be a vector of unit magnitude (speed) in the direction of the goal.
-        velocity = np.array((robot_state.gx - robot_state.px, robot_state.gy - robot_state.py))
+        velocity = np.array((self_state.gx - self_state.px, self_state.gy - self_state.py))
         speed = np.linalg.norm(velocity)
         pref_vel = velocity / speed if speed > 1 else velocity
 
@@ -123,37 +137,3 @@ class ORCA(Policy):
         self.last_state = state
 
         return action
-
-
-class CentralizedORCA(ORCA):
-    def __init__(self):
-        super().__init__()
-
-    def predict(self, state, groups=None):
-        """ Centralized planning for all agents """
-        params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
-        if self.sim is not None and self.sim.getNumAgents() != len(state):
-            del self.sim
-            self.sim = None
-
-        if self.sim is None:
-            self.sim = rvo2.PyRVOSimulator(self.time_step, *params, self.radius, self.max_speed)
-            for agent_state in state:
-                self.sim.addAgent(agent_state.position, *params, agent_state.radius + 0.01 + self.safety_space,
-                                  self.max_speed, agent_state.velocity)
-        else:
-            for i, agent_state in enumerate(state):
-                self.sim.setAgentPosition(i, agent_state.position)
-                self.sim.setAgentVelocity(i, agent_state.velocity)
-
-        # Set the preferred velocity to be a vector of unit magnitude (speed) in the direction of the goal.
-        for i, agent_state in enumerate(state):
-            velocity = np.array((agent_state.gx - agent_state.px, agent_state.gy - agent_state.py))
-            speed = np.linalg.norm(velocity)
-            pref_vel = velocity / speed if speed > 1 else velocity
-            self.sim.setAgentPrefVelocity(i, (pref_vel[0], pref_vel[1]))
-
-        self.sim.doStep()
-        actions = [ActionXY(*self.sim.getAgentVelocity(i)) for i in range(len(state))]
-
-        return actions

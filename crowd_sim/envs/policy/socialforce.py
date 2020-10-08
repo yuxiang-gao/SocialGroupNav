@@ -27,15 +27,19 @@ class SocialForce(Policy):
         :return:
         """
         sf_state = []
-        robot_state = state.robot_state
+        self_state = state.self_state
+        velocity = np.array((self_state.gx - self_state.px, self_state.gy - self_state.py))
+        speed = np.linalg.norm(velocity)
+        pref_vel = velocity / speed if speed > 1 else velocity
+
         sf_state.append(
             (
-                robot_state.px,
-                robot_state.py,
-                robot_state.vx,
-                robot_state.vy,
-                robot_state.gx,
-                robot_state.gy,
+                self_state.px,
+                self_state.py,
+                pref_vel[0],
+                pref_vel[1],
+                self_state.gx,
+                self_state.gy,
             )
         )
         for human_state in state.human_states:
@@ -49,6 +53,7 @@ class SocialForce(Policy):
             sf_state.append(
                 (human_state.px, human_state.py, human_state.vx, human_state.vy, gx, gy)
             )
+
         sim = Simulator(np.array(sf_state), groups=groups, obstacles=obs)
         sim.step()
         action = ActionXY(sim.peds.state[0, 2], sim.peds.state[0, 3])
@@ -66,6 +71,8 @@ class CentralizedSocialForce(SocialForce):
 
     def __init__(self):
         super().__init__()
+
+        self.forces = None
 
     def predict(self, state, groups=None, obs=None):
         sf_state = []
@@ -87,7 +94,11 @@ class CentralizedSocialForce(SocialForce):
             )
         sim = Simulator(np.array(sf_state), groups=groups, obstacles=obs)
         sim.step()
+        self.forces = sim.forces
         actions = [ActionXY(sim.peds.state[i, 2], sim.peds.state[i, 3]) for i in range(len(state))]
         del sim
 
         return actions
+
+    def get_forces(self):
+        return self.forces

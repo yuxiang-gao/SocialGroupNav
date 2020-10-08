@@ -1,6 +1,5 @@
 import abc
 import numpy as np
-import torch
 
 
 class Policy(object):
@@ -30,23 +29,8 @@ class Policy(object):
     def set_env(self, env):
         self.env = env
 
-    def set_time_step(self, time_step):
-        self.time_step = time_step
-
     def get_model(self):
         return self.model
-
-    def save_model(self, file):
-        torch.save(self.model.state_dict(), file)
-
-    def load_model(self, file):
-        self.model.load_state_dict(torch.load(file))
-
-    def get_state_dict(self):
-        return self.model.state_dict()
-
-    def load_state_dict(self, state_dict):
-        self.model.load_state_dict(state_dict)
 
     @abc.abstractmethod
     def predict(self, state, groups=None, obs=None):
@@ -58,11 +42,8 @@ class Policy(object):
 
     @staticmethod
     def reach_destination(state):
-        robot_state = state.robot_state
-        if (
-            np.linalg.norm((robot_state.py - robot_state.gy, robot_state.px - robot_state.gx))
-            < robot_state.radius
-        ):
+        self_state = state.self_state
+        if np.linalg.norm((self_state.py - self_state.gy, self_state.px - self_state.gx)) < self_state.radius:
             return True
         else:
             return False
