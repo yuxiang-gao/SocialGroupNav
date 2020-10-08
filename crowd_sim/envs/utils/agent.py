@@ -32,6 +32,8 @@ class Agent(object):
         self.kinematics = self.policy.kinematics if self.policy is not None else None
         self.px = None
         self.py = None
+        self.sx = None
+        self.sy = None
         self.gx = None
         self.gy = None
         self.vx = None
@@ -143,9 +145,7 @@ class Agent(object):
             # print (traj)
             # print ('\n')
             try:
-
                 dist, path = fastdtw(this_sample, traj, dist=euclidean)
-
             except:
                 print("boo")
             # print (dist)
