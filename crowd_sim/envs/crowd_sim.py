@@ -727,7 +727,7 @@ class CrowdSim(gym.Env):
 
         # the rest are individuals
         for idx in self.individual_membership:
-            ind_color = cmap(len(self.group_membership) + i)
+            ind_color = cmap(len(self.group_membership) + idx)
             human_colors[idx] = ind_color
 
         robot_positions = [self.states[i][0].position for i in range(len(self.states))]
