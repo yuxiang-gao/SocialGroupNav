@@ -378,11 +378,11 @@ class CrowdSim(gym.Env):
             if self.robot.visible:
                 agent_states.append(self.robot.get_full_state())
                 human_actions = self.centralized_planner.predict(
-                    agent_states, self.group_membership
+                    agent_states, self.group_membership, self.obstacles
                 )[:-1]
             else:
                 human_actions = self.centralized_planner.predict(
-                    agent_states, self.group_membership
+                    agent_states, self.group_membership, self.obstacles
                 )
         else:
             human_actions = []
