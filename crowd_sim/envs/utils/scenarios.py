@@ -185,24 +185,21 @@ class SceneManager(object):
             if len(humans) == size:
                 return humans
 
-    def check_collision(self, position, others=None):  # TODO: check obstacles
-        collide = False
-        agents = [self.robot] + self.humans
-        if others is not None:
-            agents += others
+    def check_collision(self, position, others=[]):
+        """Check collision, return true if there is collsion, false otherwise"""
 
-        for agent in agents:
+        # Check collision with agents
+        for agent in [self.robot] + self.humans + others:
             min_dist = self.human_radius + agent.radius + self.discomfort_dist
             if norm((position - agent.get_position())) < min_dist:
-                collide = True
-                break
+                return True
 
+        # Check with obstacles
         for ob in self.obstacles_sampled:
             min_dist = self.human_radius + self.discomfort_dist
             if norm((position - ob)) < min_dist:
-                collide = True
-                break
-        return collide
+                return True
+        return False
 
     @staticmethod
     def split_array(array, split):
