@@ -713,9 +713,10 @@ class CrowdSim(gym.Env):
         x_offset = 0.11
         y_offset = 0.11
         cmap = plt.cm.get_cmap("tab20")
-        robot_color = "blue"
-        goal_color = "green"
-        arrow_color = "red"
+        cmap2 = plt.cm.get_cmap("Set1")
+        robot_color = cmap2(1)
+        goal_color = cmap2(2)
+        arrow_color = cmap2(0)
         arrow_style = patches.ArrowStyle("->", head_length=4, head_width=2)
 
         # generate color mapping
@@ -840,14 +841,37 @@ class CrowdSim(gym.Env):
         elif mode == "video":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            ax.set_xlim(-6, 6)
-            ax.set_ylim(-6, 6)
+            ax.set_xlim(-7, 7)
+            ax.set_ylim(-7, 7)
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 
             # draw static obstacles
             for ob in self.obstacles:
-                ax.plot(ob[:2], ob[2:4], "-o", color="black", markersize=2.5)
+                ax.plot(
+                    ob[:2], ob[2:4], "-o", color="black", markersize=2.5
+                )  # add human start positions and goals
+
+            for i in range(len(self.humans)):
+                human = self.humans[i]
+                human_goal = mlines.Line2D(
+                    [human.get_goal_position()[0]],
+                    [human.get_goal_position()[1]],
+                    color=human_colors[i],
+                    marker="*",
+                    linestyle="None",
+                    markersize=10,
+                )
+                ax.add_artist(human_goal)
+                human_start = mlines.Line2D(
+                    [human.get_start_position()[0]],
+                    [human.get_start_position()[1]],
+                    color=human_colors[i],
+                    marker=".",
+                    linestyle="None",
+                    markersize=10,
+                )
+                ax.add_artist(human_start)
 
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
