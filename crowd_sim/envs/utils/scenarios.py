@@ -115,6 +115,9 @@ class SceneManager(object):
         self.discomfort_dist = self.config.reward.discomfort_dist
         self.randomize_attributes = self.config.env.randomize_attributes
 
+    def set_scenario(self, scenario):
+        self.scenario_config = ScenarioConfig(scenario, self.config)
+
     def get_scene(self):
         group_membership = []
         individual_membership = []
@@ -162,7 +165,9 @@ class SceneManager(object):
                 if not self.check_collision(spawn_pos, humans):  # break if there is no collision
                     break
                 else:
-                    spawn_pos += noise / size * 0.5  # gentlely nudge the new ped to avoid collision
+                    spawn_pos += (
+                        self.rng.random(2) - 0.5
+                    ) * self.human_radius  # gentlely nudge the new ped to avoid collision
 
             human = Human(self.config, "humans")
             if self.randomize_attributes:
