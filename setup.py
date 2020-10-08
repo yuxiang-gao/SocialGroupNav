@@ -24,7 +24,8 @@ setup(
         'torchvision',
         'seaborn',
         'tqdm',
-        'tensorboardX'
+        'tensorboardX',
+        'fastdtw'
     ],
     extras_require={
         'test': [
