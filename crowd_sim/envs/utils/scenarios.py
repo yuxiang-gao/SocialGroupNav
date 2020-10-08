@@ -107,6 +107,7 @@ class SceneManager(object):
         self.robot = robot
         self.humans = []
         self.membership = []
+        self.obstacles_sampled = self.sample_obstalces(self.get_obstacles())
 
         self.rng = np.random.default_rng()
 
@@ -120,6 +121,7 @@ class SceneManager(object):
         self.humans = []
         self.membership = []
         self.scenario_config = ScenarioConfig(scenario, self.config)
+        self.obstacles_sampled = self.sample_obstalces(self.get_obstacles())
 
     def get_current_scenario(self):
         return self.scenario_config.scenario.value
@@ -133,6 +135,9 @@ class SceneManager(object):
             else:
                 group_membership.append(group)
         return self.humans, self.scenario_config.obstacles, group_membership, individual_membership
+
+    def get_obstacles(self):
+        return self.scenario_config.obstacles
 
     def spawn(self, num_human=5, group_size_lambda=1.2, use_groups=True):
         # group_sizes = self.rng.poisson(group_size_lambda, num_groups) + 1  # no zeros
@@ -183,14 +188,21 @@ class SceneManager(object):
             if len(humans) == size:
                 return humans
 
-    def check_collision(self, position, others=[]):  # TODO: check obstacles
+    def check_collision(self, position, others=None):  # TODO: check obstacles
         collide = False
-        for agent in [self.robot] + self.humans + others:
+        agents = [self.robot] + self.humans
+        if others is not None:
+            agents += others
+
+        for agent in agents:
             min_dist = self.human_radius + agent.radius + self.discomfort_dist
-            if (
-                norm((position - agent.get_position())) < min_dist
-                or norm((position - agent.get_goal_position())) < min_dist
-            ):
+            if norm((position - agent.get_position())) < min_dist:
+                collide = True
+                break
+
+        for ob in self.obstacles_sampled:
+            min_dist = self.human_radius + self.discomfort_dist
+            if norm((position - ob)) < min_dist:
                 collide = True
                 break
         return collide
@@ -206,3 +218,15 @@ class SceneManager(object):
             output_array.append(array[idx : idx + s])
             idx += s
         return np.array(output_array)
+
+    @staticmethod
+    def sample_obstalces(ob, resolution=10):
+        """Sample from line obstacles"""
+        ob_sampled = None
+        for startx, endx, starty, endy in ob:
+            samples = int(norm((startx - endx, starty - endy)) * resolution)
+            line = np.array(
+                list(zip(np.linspace(startx, endx, samples), np.linspace(starty, endy, samples)))
+            )
+            ob_sampled = line if ob_sampled is None else np.vstack((ob_sampled, line))
+        return ob_sampled

@@ -39,6 +39,8 @@ env.set_robot(robot)
 # env.set_scene("corner")
 
 rewards = []
+env.human_num = 10
+env.train_val_sim = "t_intersection"
 ob = env.reset("val")
 #%%
 env.render("traj")
@@ -46,4 +48,3 @@ env.render("traj")
 # %%
 env.scene_manager.humans  # %%
 
-# %%
