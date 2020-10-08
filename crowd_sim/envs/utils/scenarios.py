@@ -52,7 +52,7 @@ class ScenarioConfig:
                     [-length, length, -self.width / 2, -self.width / 2],
                 ]
             )
-            self.spawn_positions = [[length, 1], [length, -1], [-length, 1], [-length, -1]]
+            self.spawn_positions = [[length, 0], [-length, 0]]
 
         elif self.scenario == Scenario.T_INTERSECTION:
             length = 5
@@ -82,9 +82,10 @@ class ScenarioConfig:
             return p, -p
         else:
             p_idx, g_idx = np.random.choice(range(len(self.spawn_positions)), 2, replace=False)
+            print(self.spawn_positions, p_idx, g_idx)
             return self.spawn_positions[p_idx], self.spawn_positions[g_idx]
 
-    def get_spawn_positions(self, groups):
+    def get_spawn_positions(self, groups=None):
         if self.scenario == Scenario.CIRCLE_CROSSING:
             return self.get_spawn_position()
         else:
@@ -177,7 +178,7 @@ class SceneManager(object):
             human = Human(self.config, "humans")
             if self.randomize_attributes:
                 human.sample_random_attributes()
-            human.set(*spawn_pos, *(goal + noise), 0, 0, 0)  # TODO: set theta?
+            human.set(*spawn_pos, *(goal), 0, 0, 0)  # TODO: set theta?
             humans.append(human)
             if len(humans) == size:
                 return humans
