@@ -717,6 +717,25 @@ class CrowdSim(gym.Env):
         goal_color = "green"
         arrow_color = "red"
         arrow_style = patches.ArrowStyle("->", head_length=4, head_width=2)
+
+        # generate color mapping
+        human_colors = [0] * len(self.humans)
+        for i in range(len(self.group_membership)):
+            group_color = cmap(i)
+            for idx in self.group_membership[i]:
+                human_colors[idx] = group_color
+
+        # the rest are individuals
+        for idx in self.individual_membership:
+            ind_color = cmap(len(self.group_membership) + i)
+            human_colors[idx] = ind_color
+
+        robot_positions = [self.states[i][0].position for i in range(len(self.states))]
+        human_positions = [
+            [self.states[i][1][j].position for j in range(len(self.humans))]
+            for i in range(len(self.states))
+        ]
+
         if mode == "human":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.set_xlim(-6, 6)
@@ -736,22 +755,11 @@ class CrowdSim(gym.Env):
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 
+            # draw static obstacles
             for ob in self.obstacles:
                 ax.plot(ob[:2], ob[2:4], "-o", color="black", markersize=2.5)
 
             # add human start positions and goals
-            # human_colors = [cmap(i) for i in range(len(self.humans))]
-            human_colors = []
-            for i in range(len(self.group_membership)):
-                group_color = cmap(i)
-                for _ in self.group_membership[i]:
-                    human_colors.append(group_color)
-
-            # the rest are individuals
-            for i in range(len(self.individual_membership)):
-                ind_color = cmap(len(self.group_membership) + i)
-                human_colors.append(ind_color)
-
             for i in range(len(self.humans)):
                 human = self.humans[i]
                 human_goal = mlines.Line2D(
@@ -773,12 +781,6 @@ class CrowdSim(gym.Env):
                 )
                 ax.add_artist(human_start)
 
-            robot_positions = [self.states[i][0].position for i in range(len(self.states))]
-            human_positions = [
-                [self.states[i][1][j].position for j in range(len(self.humans))]
-                for i in range(len(self.states))
-            ]
-
             for k in range(len(self.states)):
                 if k % 4 == 0 or k == len(self.states) - 1:
                     robot = plt.Circle(
@@ -787,7 +789,10 @@ class CrowdSim(gym.Env):
                     plt.legend([robot], ["Robot"], fontsize=16)
                     humans = [
                         plt.Circle(
-                            human_positions[k][i], self.humans[i].radius, fill=False, color=cmap(i)
+                            human_positions[k][i],
+                            self.humans[i].radius,
+                            fill=False,
+                            color=human_colors[i],
                         )
                         for i in range(len(self.humans))
                     ]
@@ -840,19 +845,7 @@ class CrowdSim(gym.Env):
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 
-            # add human start positions and goals
-            human_colors = []
-
-            for i in range(len(self.group_membership)):
-                group_color = cmap(i)
-                for _ in self.group_membership[i]:
-                    human_colors.append(group_color)
-
-            # the rest are individuals
-            for i in range(len(self.individual_membership)):
-                ind_color = cmap(len(self.group_membership) + i)
-                human_colors.append(ind_color)
-
+            # draw static obstacles
             for ob in self.obstacles:
                 ax.plot(ob[:2], ob[2:4], "-o", color="black", markersize=2.5)
 
