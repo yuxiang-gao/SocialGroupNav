@@ -24,11 +24,11 @@ class Agent(object):
         """
         Base class for robot and human. Have the physical attributes of an agent.
         """
-        self.visible = config.getboolean(section, 'visible')
-        self.v_pref = config.getfloat(section, 'v_pref')
-        self.radius = config.getfloat(section, 'radius')
-        self.policy = policy_factory[config.get(section, 'policy')]()
-        self.sensor = config.get(section, 'sensor')
+        self.visible = config.getboolean(section, "visible")
+        self.v_pref = config.getfloat(section, "v_pref")
+        self.radius = config.getfloat(section, "radius")
+        self.policy = policy_factory[config.get(section, "policy")]()
+        self.sensor = config.get(section, "sensor")
         self.kinematics = self.policy.kinematics if self.policy is not None else None
         self.px = None
         self.py = None
@@ -39,7 +39,7 @@ class Agent(object):
         self.theta = None
         self.time_step = None
 
-        self.enable_intent = config.getboolean('env', 'enable_intent', fallback=False)
+        self.enable_intent = config.getboolean("env", "enable_intent", fallback=False)
 
         # TODO: make this configurable
         target_min_x = -6
@@ -51,20 +51,24 @@ class Agent(object):
 
         if self.enable_intent:
 
-            self.targets = Agent.compute_targets_by_grid(target_min_x, target_max_x, target_min_y,
-                                                         target_max_y, grid_length_x, grid_length_y)
+            self.targets = Agent.compute_targets_by_grid(
+                target_min_x, target_max_x, target_min_y, target_max_y, grid_length_x, grid_length_y
+            )
 
-            self.traj_length = config.getint(section, 'traj_length', fallback=8)
+            self.traj_length = config.getint(section, "traj_length", fallback=8)
             self.trajectory = collections.deque(maxlen=self.traj_length)
 
-            self.target_map = np.ones(grid_length_x*grid_length_y)/(grid_length_x*grid_length_y)
+            self.target_map = np.ones(grid_length_x * grid_length_y) / (
+                grid_length_x * grid_length_y
+            )
 
         else:
             self.target_map = None
 
-
     @staticmethod
-    def compute_targets_by_grid(min_x=-20, max_x=20, min_y=-20, max_y=20, grid_length_x=4, grid_length_y=4):
+    def compute_targets_by_grid(
+        min_x=-20, max_x=20, min_y=-20, max_y=20, grid_length_x=4, grid_length_y=4
+    ):
         total_distance_x = max_x - min_x
         distance_per_bin_x = total_distance_x / grid_length_x
         center_offset_x = distance_per_bin_x / 2
@@ -129,8 +133,8 @@ class Agent(object):
 
         p_h_g = []
 
-        #import time
-        #start = time.time()
+        # import time
+        # start = time.time()
 
         for i in range(len(targets)):
             traj = Agent.get_trajectory(start_pos, targets[i], speed, RATE_VAL, obs_len)
@@ -142,9 +146,8 @@ class Agent(object):
 
                 dist, path = fastdtw(this_sample, traj, dist=euclidean)
 
-
             except:
-                print('boo')
+                print("boo")
             # print (dist)
             # if (dist < shortest_dist):
             # 	shortest_dist = dist
@@ -153,8 +156,8 @@ class Agent(object):
             prob = math.exp(-BETA * dist)
             p_h_g.append(prob)
 
-        #end = time.time()
-        #print(end - start)
+        # end = time.time()
+        # print(end - start)
 
         prob_sum = sum(p_h_g)
         p_h_g = [x / prob_sum for x in p_h_g]
@@ -169,20 +172,25 @@ class Agent(object):
 
         if PLOT:
             print(p_h_g)
-            plt.scatter(this_sample[:, 0], this_sample[:, 1], c='red')
+            plt.scatter(this_sample[:, 0], this_sample[:, 1], c="red")
             targets_np = np.array(targets)
 
             for d in range(len(traj_to_targets)):
-                plt.scatter(traj_to_targets[d][:, 0], traj_to_targets[d][:, 1], c='green', alpha=p_h_g[d]);
-                plt.scatter(targets_np[d, 0], targets_np[d, 1], c='black', s=200, alpha=p_h_g[d]);
+                plt.scatter(
+                    traj_to_targets[d][:, 0], traj_to_targets[d][:, 1], c="green", alpha=p_h_g[d]
+                )
+                plt.scatter(targets_np[d, 0], targets_np[d, 1], c="black", s=200, alpha=p_h_g[d])
 
             plt.show()
 
         return p_h_g
 
     def print_info(self):
-        logging.info('Agent is {} and has {} kinematic constraint'.format(
-            'visible' if self.visible else 'invisible', self.kinematics))
+        logging.info(
+            "Agent is {} and has {} kinematic constraint".format(
+                "visible" if self.visible else "invisible", self.kinematics
+            )
+        )
 
     def set_policy(self, policy):
         self.policy = policy
@@ -199,6 +207,8 @@ class Agent(object):
     def set(self, px, py, gx, gy, vx, vy, theta, radius=None, v_pref=None):
         self.px = px
         self.py = py
+        self.sx = px
+        self.sy = py
         self.gx = gx
         self.gy = gy
         self.vx = vx
@@ -215,8 +225,7 @@ class Agent(object):
     def update_target_map(self):
         curr_ped_seq = np.array(list(self.trajectory))
         rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
-        rel_curr_ped_seq[:, 1:] = \
-            curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
+        rel_curr_ped_seq[:, 1:] = curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
 
         self.target_map = Agent.compute_target_map(rel_curr_ped_seq, self.traj_length, self.targets)
 
@@ -237,7 +246,7 @@ class Agent(object):
         self.check_validity(action)
         pos = self.compute_position(action, self.time_step, closed)
         next_px, next_py = pos
-        if self.kinematics == 'holonomic':
+        if self.kinematics == "holonomic":
             next_vx = action.vx
             next_vy = action.vy
         else:
@@ -248,7 +257,18 @@ class Agent(object):
         return ObservableState(next_px, next_py, next_vx, next_vy, self.radius, self.target_map)
 
     def get_full_state(self):
-        return FullState(self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta, self.target_map)
+        return FullState(
+            self.px,
+            self.py,
+            self.vx,
+            self.vy,
+            self.radius,
+            self.gx,
+            self.gy,
+            self.v_pref,
+            self.theta,
+            self.target_map,
+        )
 
     def get_position(self):
         return self.px, self.py
@@ -262,6 +282,9 @@ class Agent(object):
 
     def get_goal_position(self):
         return self.gx, self.gy
+
+    def get_start_position(self):
+        return self.sx, self.sy
 
     def get_velocity(self):
         return self.vx, self.vy
@@ -279,14 +302,14 @@ class Agent(object):
         return
 
     def check_validity(self, action):
-        if self.kinematics == 'holonomic':
+        if self.kinematics == "holonomic":
             assert isinstance(action, ActionXY)
         else:
             assert isinstance(action, ActionRot)
 
     def compute_position(self, action, delta_t, closed=True, x_min=-6, x_max=6, y_min=-6, y_max=6):
         self.check_validity(action)
-        if self.kinematics == 'holonomic':
+        if self.kinematics == "holonomic":
             px = self.px + action.vx * delta_t
             py = self.py + action.vy * delta_t
         else:
@@ -308,7 +331,7 @@ class Agent(object):
         if self.enable_intent:
             self.append_trajectory((self.px, self.py))
 
-        if self.kinematics == 'holonomic':
+        if self.kinematics == "holonomic":
             self.vx = action.vx
             self.vy = action.vy
         else:
@@ -317,7 +340,9 @@ class Agent(object):
             self.vy = action.v * np.sin(self.theta)
 
     def reached_destination(self):
-        return norm(np.array(self.get_position()) - np.array(self.get_goal_position())) < self.radius
+        return (
+            norm(np.array(self.get_position()) - np.array(self.get_goal_position())) < self.radius
+        )
 
     @staticmethod
     def reflect(px, py, x_min, x_max, y_min, y_max):

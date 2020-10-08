@@ -70,10 +70,10 @@ class ScenarioConfig:
             ]
 
     def configure(self, config):
-        self.v_pref = config.humans.v_pref
-        self.circle_radius = config.sim.circle_radius
-        self.human_radius = config.humans.radius
-        self.discomfort_dist = config.reward.discomfort_dist
+        self.v_pref = config.getfloat("humans", "v_pref")
+        self.circle_radius = config.getfloat("sim", "circle_radius")
+        self.human_radius = config.getfloat("humans", "radius")
+        self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
 
     def get_spawn_position(self):  # return (center, goal), no noise
         if self.scenario == Scenario.CIRCLE_CROSSING:
@@ -111,11 +111,13 @@ class SceneManager(object):
 
     def configure(self, config):
         self.config = config
-        self.human_radius = self.config.humans.radius
-        self.discomfort_dist = self.config.reward.discomfort_dist
-        self.randomize_attributes = self.config.env.randomize_attributes
+        self.human_radius = self.config.getfloat("humans", "radius")
+        self.discomfort_dist = self.config.getfloat("reward", "discomfort_dist")
+        self.randomize_attributes = self.config.getboolean("env", "randomize_attributes")
 
     def set_scenario(self, scenario):
+        self.humans = []
+        self.membership = []
         self.scenario_config = ScenarioConfig(scenario, self.config)
 
     def get_current_scenario(self):

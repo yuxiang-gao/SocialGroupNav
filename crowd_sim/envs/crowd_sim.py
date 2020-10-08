@@ -179,7 +179,7 @@ class CrowdSim(gym.Env):
         self.obstacles = obs
 
     def set_scene(self, scenario=None):
-        if self.scene_manager is not None:
+        if self.scene_manager is None:
             self.scene_manager = SceneManager(scenario, self.robot, self.config)
         else:
             self.scene_manager.set_scenario(scenario)
@@ -537,7 +537,7 @@ class CrowdSim(gym.Env):
             points = []
             for human_id in group:
                 ind_points = [
-                    self.point_along_circle(
+                    point_along_circle(
                         self.humans[human_id].px,
                         self.humans[human_id].py,
                         self.humans[human_id].radius,
@@ -551,7 +551,7 @@ class CrowdSim(gym.Env):
                 # compute the convex hull
                 hull = ConvexHull(points)
 
-                group_col = self.point_in_hull(robot_pos, hull)
+                group_col = point_in_hull(robot_pos, hull)
 
             # min spanning circle
             else:
