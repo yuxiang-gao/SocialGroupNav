@@ -33,12 +33,12 @@ class Policy(object):
         return self.model
 
     @abc.abstractmethod
-    def predict(self, state, groups=None, obs=None):
+    def predict(self, state, groups=None, obstacles=None):
         """
         Policy takes state as input and output an action
         :param state:
         :param groups: group membership
-        :param obs: obstacles
+        :param obstacles: obstacles
         :return:
         """
         return

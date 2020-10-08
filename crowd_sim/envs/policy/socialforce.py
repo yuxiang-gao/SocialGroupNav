@@ -19,7 +19,7 @@ class SocialForce(Policy):
     def set_phase(self, phase):
         return
 
-    def predict(self, state, groups=None, obs=None):
+    def predict(self, state, groups=None, obstacles=None):
         """
         :param state:
         :param groups: group membership
@@ -47,7 +47,7 @@ class SocialForce(Policy):
                 (human_state.px, human_state.py, human_state.vx, human_state.vy, gx, gy)
             )
 
-        sim = Simulator(np.array(sf_state), groups=groups, obstacles=obs)
+        sim = Simulator(np.array(sf_state), groups=groups, obstacles=obstacles)
         sim.step()
         action = ActionXY(sim.peds.state[0, 2], sim.peds.state[0, 3])
 
@@ -67,7 +67,7 @@ class CentralizedSocialForce(SocialForce):
 
         self.forces = None
 
-    def predict(self, state, groups=None, obs=None):
+    def predict(self, state, groups=None, obstacles=None):
         sf_state = []
         for agent_state in state:
             # Set the preferred velocity to be a vector of unit magnitude (speed) in the direction of the goal.
@@ -85,7 +85,7 @@ class CentralizedSocialForce(SocialForce):
                     agent_state.gy,
                 )
             )
-        sim = Simulator(np.array(sf_state), groups=groups, obstacles=obs)
+        sim = Simulator(np.array(sf_state), groups=groups, obstacles=obstacles)
         sim.step()
         self.forces = sim.forces
         actions = [ActionXY(sim.peds.state[i, 2], sim.peds.state[i, 3]) for i in range(len(state))]
