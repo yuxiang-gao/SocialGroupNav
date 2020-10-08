@@ -712,8 +712,8 @@ class CrowdSim(gym.Env):
         plt.rcParams["animation.ffmpeg_path"] = "/usr/bin/ffmpeg"
         x_offset = 0.11
         y_offset = 0.11
-        cmap = plt.cm.get_cmap("hsv", 10)
-        robot_color = "yellow"
+        cmap = plt.cm.get_cmap("tab20")
+        robot_color = "blue"
         goal_color = "green"
         arrow_color = "red"
         arrow_style = patches.ArrowStyle("->", head_length=4, head_width=2)
