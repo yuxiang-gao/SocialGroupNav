@@ -36,14 +36,20 @@ class Policy(object):
     def predict(self, state, groups=None, obs=None):
         """
         Policy takes state as input and output an action
-
+        :param state:
+        :param groups: group membership
+        :param obs: obstacles
+        :return:
         """
         return
 
     @staticmethod
     def reach_destination(state):
         self_state = state.self_state
-        if np.linalg.norm((self_state.py - self_state.gy, self_state.px - self_state.gx)) < self_state.radius:
+        if (
+            np.linalg.norm((self_state.py - self_state.gy, self_state.px - self_state.gx))
+            < self_state.radius
+        ):
             return True
         else:
             return False

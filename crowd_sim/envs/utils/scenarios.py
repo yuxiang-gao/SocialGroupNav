@@ -6,6 +6,7 @@ import numpy as np
 from numpy.linalg import norm
 
 from crowd_sim.envs.utils.human import Human
+from crowd_sim.envs.utils.state import JointState
 from crowd_sim.envs.utils.utils import point_to_segment_dist
 
 
@@ -101,13 +102,14 @@ class ScenarioConfig:
 
 class SceneManager(object):
     def __init__(self, scenario, robot, config):
-        self.scenario_config = ScenarioConfig(scenario, config)
-        self.configure(config)
-
-        self.robot = robot
         self.humans = []
         self.membership = []
-        self.obstacles_sampled = self.sample_obstalces(self.get_obstacles())
+        self.scenario_config = None
+        # self.obstacles_sampled = None
+
+        self.configure(config)
+        self.set_scenario(scenario)
+        self.robot = robot
 
         self.rng = np.random.default_rng()
 
@@ -121,7 +123,9 @@ class SceneManager(object):
         self.humans = []
         self.membership = []
         self.scenario_config = ScenarioConfig(scenario, self.config)
-        self.obstacles_sampled = self.sample_obstalces(self.get_obstacles())
+        # pass obstacles to Agent class
+        JointState.obstacles = self.get_obstacles()
+        # self.obstacles_sampled = self.sample_obstalces(self.get_obstacles())
 
     def get_current_scenario(self):
         return self.scenario_config.scenario.value

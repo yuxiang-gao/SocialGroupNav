@@ -13,5 +13,5 @@ class Human(Agent):
         :return:
         """
         state = JointState(self.get_full_state(), ob)
-        action = self.policy.predict(state, groups)
+        action = self.policy.predict(state, groups, state.obstacles)
         return action

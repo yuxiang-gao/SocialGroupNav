@@ -58,23 +58,83 @@ class FullState(object):
 
     def __add__(self, other):
         if self.add_intent:
-            return other + (self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta,
-                            self.target_map_0, self.target_map_1, self.target_map_2,
-                            self.target_map_3, self.target_map_4, self.target_map_5,
-                            self.target_map_6, self.target_map_7, self.target_map_8)
+            return other + (
+                self.px,
+                self.py,
+                self.vx,
+                self.vy,
+                self.radius,
+                self.gx,
+                self.gy,
+                self.v_pref,
+                self.theta,
+                self.target_map_0,
+                self.target_map_1,
+                self.target_map_2,
+                self.target_map_3,
+                self.target_map_4,
+                self.target_map_5,
+                self.target_map_6,
+                self.target_map_7,
+                self.target_map_8,
+            )
         else:
-            return other + (self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
+            return other + (
+                self.px,
+                self.py,
+                self.vx,
+                self.vy,
+                self.radius,
+                self.gx,
+                self.gy,
+                self.v_pref,
+                self.theta,
+            )
 
     def __str__(self):
         if self.add_intent:
-            return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy,
-                                              self.v_pref, self.theta,
-                            self.target_map_0, self.target_map_1, self.target_map_2,
-                            self.target_map_3, self.target_map_4, self.target_map_5,
-                            self.target_map_6, self.target_map_7, self.target_map_8]])
+            return " ".join(
+                [
+                    str(x)
+                    for x in [
+                        self.px,
+                        self.py,
+                        self.vx,
+                        self.vy,
+                        self.radius,
+                        self.gx,
+                        self.gy,
+                        self.v_pref,
+                        self.theta,
+                        self.target_map_0,
+                        self.target_map_1,
+                        self.target_map_2,
+                        self.target_map_3,
+                        self.target_map_4,
+                        self.target_map_5,
+                        self.target_map_6,
+                        self.target_map_7,
+                        self.target_map_8,
+                    ]
+                ]
+            )
         else:
-            return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy,
-                                              self.v_pref, self.theta]])
+            return " ".join(
+                [
+                    str(x)
+                    for x in [
+                        self.px,
+                        self.py,
+                        self.vx,
+                        self.vy,
+                        self.radius,
+                        self.gx,
+                        self.gy,
+                        self.v_pref,
+                        self.theta,
+                    ]
+                ]
+            )
 
 
 class ObservableState(object):
@@ -130,30 +190,66 @@ class ObservableState(object):
 
     def __add__(self, other):
         if self.add_intent:
-            return other + (self.px, self.py, self.vx, self.vy, self.radius,
-                            self.target_map_0, self.target_map_1, self.target_map_2,
-                            self.target_map_3, self.target_map_4, self.target_map_5,
-                            self.target_map_6, self.target_map_7, self.target_map_8)
+            return other + (
+                self.px,
+                self.py,
+                self.vx,
+                self.vy,
+                self.radius,
+                self.target_map_0,
+                self.target_map_1,
+                self.target_map_2,
+                self.target_map_3,
+                self.target_map_4,
+                self.target_map_5,
+                self.target_map_6,
+                self.target_map_7,
+                self.target_map_8,
+            )
 
         else:
             return other + (self.px, self.py, self.vx, self.vy, self.radius)
 
     def __str__(self):
         if self.add_intent:
-            return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius,
-                            self.target_map_0, self.target_map_1, self.target_map_2,
-                            self.target_map_3, self.target_map_4, self.target_map_5,
-                            self.target_map_6, self.target_map_7, self.target_map_8]])
+            return " ".join(
+                [
+                    str(x)
+                    for x in [
+                        self.px,
+                        self.py,
+                        self.vx,
+                        self.vy,
+                        self.radius,
+                        self.target_map_0,
+                        self.target_map_1,
+                        self.target_map_2,
+                        self.target_map_3,
+                        self.target_map_4,
+                        self.target_map_5,
+                        self.target_map_6,
+                        self.target_map_7,
+                        self.target_map_8,
+                    ]
+                ]
+            )
 
         else:
-            return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius]])
+            return " ".join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius]])
 
 
 class JointState(object):
+    obstacles = []
+
     def __init__(self, self_state, human_states):
         assert isinstance(self_state, FullState)
         for human_state in human_states:
-           assert isinstance(human_state, ObservableState)
+            assert isinstance(human_state, ObservableState)
 
         self.self_state = self_state
         self.human_states = human_states
+
+    @classmethod
+    def set_obstacles(cls, obstacles):
+        cls.obstacles = obstacles
+

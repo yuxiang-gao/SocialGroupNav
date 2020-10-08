@@ -21,9 +21,9 @@ class SocialForce(Policy):
 
     def predict(self, state, groups=None, obs=None):
         """
-
         :param state:
-        :param groups
+        :param groups: group membership
+        :param obs: obstacles
         :return:
         """
         sf_state = []
@@ -33,14 +33,7 @@ class SocialForce(Policy):
         pref_vel = velocity / speed if speed > 1 else velocity
 
         sf_state.append(
-            (
-                self_state.px,
-                self_state.py,
-                pref_vel[0],
-                pref_vel[1],
-                self_state.gx,
-                self_state.gy,
-            )
+            (self_state.px, self_state.py, pref_vel[0], pref_vel[1], self_state.gx, self_state.gy,)
         )
         for human_state in state.human_states:
             # approximate desired direction with current velocity
