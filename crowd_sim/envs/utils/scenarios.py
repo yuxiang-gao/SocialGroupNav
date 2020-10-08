@@ -6,6 +6,7 @@ import numpy as np
 from numpy.linalg import norm
 
 from crowd_sim.envs.utils.human import Human
+from crowd_sim.envs.utils.utils import point_to_segment_dist
 
 
 class Scenario(Enum):
@@ -195,11 +196,17 @@ class SceneManager(object):
                 return True
 
         # Check with obstacles
-        for ob in self.obstacles_sampled:
+        for ob in self.get_obstacles():
             min_dist = self.human_radius + self.discomfort_dist
-            if norm((position - ob)) < min_dist:
+            if self.line_distance(ob, position) < min_dist:
                 return True
         return False
+
+    @staticmethod
+    def line_distance(line, point):
+        """Euclidean distance between a point and a line (x_min, x_max, y_min,  y_max)"""
+        endpoints = np.array(line)[[0, 2, 1, 3]]
+        return point_to_segment_dist(*endpoints, *point)
 
     @staticmethod
     def split_array(array, split):
