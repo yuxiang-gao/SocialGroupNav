@@ -302,6 +302,7 @@ class CrowdSim(gym.Env):
                     self.group_membership,
                     self.individual_membership,
                 ) = self.scene_manager.get_scene()
+                self.num_groups = len(self.group_membership)
 
                 # case_counter is always between 0 and case_size[phase]
                 self.case_counter[phase] = (self.case_counter[phase] + 1) % self.case_size[phase]
