@@ -5,14 +5,13 @@ from crowd_sim.envs.utils.state import JointState
 class Human(Agent):
     def __init__(self, config, section):
         super().__init__(config, section)
-        self.id = None
 
-    def act(self, ob):
+    def act(self, ob, groups=None):
         """
         The state for human is its full state and all other agents' observable states
         :param ob:
         :return:
         """
         state = JointState(self.get_full_state(), ob)
-        action = self.policy.predict(state)
+        action = self.policy.predict(state, groups)
         return action

@@ -118,6 +118,9 @@ class SceneManager(object):
     def set_scenario(self, scenario):
         self.scenario_config = ScenarioConfig(scenario, self.config)
 
+    def get_current_scenario(self):
+        return self.scenario_config.scenario.value
+
     def get_scene(self):
         group_membership = []
         individual_membership = []
