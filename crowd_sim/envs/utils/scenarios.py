@@ -177,11 +177,8 @@ class SceneManager(object):
     def spawn_robot(self, center, goal):
         noise = (self.rng.random(2) - 0.5) * (self.robot_radius * 2 + self.discomfort_dist)
         spawn_pos = center + noise  # spawn noise based on group size
-        agent_radius = self.robot_radius
         while True:
-            if not self.check_collision(
-                spawn_pos, radius=agent_radius, include_robot=False
-            ):  # break if there is no collision
+            if not self.check_collision(spawn_pos, robot=True):  # break if there is no collision
                 break
             else:
                 spawn_pos += (
@@ -212,10 +209,11 @@ class SceneManager(object):
             if len(humans) == size:
                 return humans
 
-    def check_collision(self, position, others=[], radius=self.human_radius, include_robot=True):
+    def check_collision(self, position, others=[], robot=False):
         """Check collision, return true if there is collsion, false otherwise"""
 
-        agents = [self.robot] + self.humans + others if include_robot else self.humans + others
+        agents = [self.robot] + self.humans + others if not robot else self.humans + others
+        radius = self.human_radius if not robot else self.robot_radius
         # Check collision with agents
         for agent in agents:
             min_dist = radius + agent.radius + self.discomfort_dist
