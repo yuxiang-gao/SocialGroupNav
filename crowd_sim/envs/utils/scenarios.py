@@ -116,6 +116,7 @@ class SceneManager(object):
     def configure(self, config):
         self.config = config
         self.human_radius = self.config.getfloat("humans", "radius")
+        self.robot_radius = self.config.getfloat("robot", "radius")
         self.discomfort_dist = self.config.getfloat("reward", "discomfort_dist")
         self.randomize_attributes = self.config.getboolean("env", "randomize_attributes")
 
@@ -143,7 +144,7 @@ class SceneManager(object):
     def get_obstacles(self):
         return self.scenario_config.obstacles
 
-    def spawn(self, num_human=5, group_size_lambda=1.2, use_groups=True):
+    def spawn(self, num_human=5, group_size_lambda=1.2, use_groups=True, set_robot=True):
         # group_sizes = self.rng.poisson(group_size_lambda, num_groups) + 1  # no zeros
         # human_idx = np.array(range(sum(group_sizes)))
         if use_groups:
@@ -161,11 +162,32 @@ class SceneManager(object):
         human_idx = np.arange(num_human)
         self.membership = self.split_array(human_idx, group_sizes)
 
+        # Spawn robot
+        if set_robot:
+            center, goal = self.scenario_config.get_spawn_position()
+            logging.info(f"Spawn robot, center: {center}, goal: {goal}")
+            self.spawn_robot(center, goal)
+
         logging.info(f"Generating groups of size: {group_sizes}")
         for i, size in enumerate(group_sizes):
             center, goal = self.scenario_config.get_spawn_positions(group_sizes)
             logging.info(f"Spawn group {i} of size {size}, center: {center}, goal: {goal}")
             self.humans += self.spawn_group(size, center, goal)
+
+    def spawn_robot(self, center, goal):
+        noise = (self.rng.random(2) - 0.5) * (self.robot_radius * 2 + self.discomfort_dist)
+        spawn_pos = center + noise  # spawn noise based on group size
+        agent_radius = self.robot_radius
+        while True:
+            if not self.check_collision(
+                spawn_pos, radius=agent_radius, include_robot=False
+            ):  # break if there is no collision
+                break
+            else:
+                spawn_pos += (
+                    self.rng.random(2) - 0.5
+                ) * agent_radius  # gentlely nudge the new ped to avoid collision
+        self.robot.set(*spawn_pos, *goal, 0, 0, 0)
 
     def spawn_group(self, size, center, goal):
         humans = []
@@ -190,12 +212,13 @@ class SceneManager(object):
             if len(humans) == size:
                 return humans
 
-    def check_collision(self, position, others=[]):
+    def check_collision(self, position, others=[], radius=self.human_radius, include_robot=True):
         """Check collision, return true if there is collsion, false otherwise"""
 
+        agents = [self.robot] + self.humans + others if include_robot else self.humans + others
         # Check collision with agents
-        for agent in [self.robot] + self.humans + others:
-            min_dist = self.human_radius + agent.radius + self.discomfort_dist
+        for agent in agents:
+            min_dist = radius + agent.radius + self.discomfort_dist
             if norm((position - agent.get_position())) < min_dist:
                 return True
 

@@ -295,7 +295,9 @@ class CrowdSim(gym.Env):
                     self.set_scene(self.train_val_sim)
                 else:
                     self.set_scene(self.test_sim)
-                self.scene_manager.spawn(num_human=human_num, use_groups=self.use_groups)
+                self.scene_manager.spawn(
+                    num_human=human_num, use_groups=self.use_groups, set_robot=True
+                )
                 (
                     self.humans,
                     self.obstacles,
