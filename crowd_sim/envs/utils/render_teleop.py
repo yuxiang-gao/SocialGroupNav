@@ -2,20 +2,27 @@ import numpy as np
 import sys
 import pygame
 from pygame.locals import *
+from crowd_sim.envs.utils.humans import Human
 
-class pyg_render(center_x, center_y, width, height):
+class pyg_render(center_x, center_y, width, height, humans, h_dir):#Input initial center of robot, width and height of canvas and a list of human positions and directions
     #Initializing the robot starting position and canvas size
     def _init_(self, center_x, center_y, width, height):
+        #for canvas
         self.width = width
         self.height = height
+        #for robot
         pos = (center_x, center_y)
         speed = [0, 0]
+        state = 0
+        #colors
         WHITE = [255, 255, 255]
         BLACK = [0, 0, 0]
         RED = [255, 0, 0]
         GREEN = [0, 255, 0]
         BLUE = [0, 0, 255]
-        state = 0
+        #human
+        human_pos = humans
+        human_dir = h_dir
 
     def run():
         pygame.init()
@@ -82,6 +89,12 @@ class pyg_render(center_x, center_y, width, height):
                     rect.left = 0
                 elif rect.right > 600:
                     rect.right = 600
+
+            for human in human_pos:
+                for dir in human_dir:
+                pygame.draw.circle(screen, RED, (human[0], human[1]), 10)
+                pygame.draw.line(screen, BLACK, d1, (np.array(human) + (10* np.array(dir))), 3)
+                
 
             
         return 0
