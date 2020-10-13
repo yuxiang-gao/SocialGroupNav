@@ -177,6 +177,7 @@ class SceneManager(object):
     def spawn_robot(self, center, goal):
         noise = (self.rng.random(2) - 0.5) * (self.robot_radius * 2 + self.discomfort_dist)
         spawn_pos = center + noise  # spawn noise based on group size
+        agent_radius = self.robot_radius
         while True:
             if not self.check_collision(spawn_pos, robot=True):  # break if there is no collision
                 break
