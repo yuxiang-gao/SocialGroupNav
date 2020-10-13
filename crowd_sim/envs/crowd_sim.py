@@ -124,6 +124,8 @@ class CrowdSim(gym.Env):
         # Reward:
         self.success_reward = config.getfloat("reward", "success_reward")
         self.collision_penalty = config.getfloat("reward", "collision_penalty")
+        self.static_obstacle_collision_penalty = config.getfloat("reward", "static_obstacle_collision_penalty",
+                                                                 fallback=self.collision_penalty)
         self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
         self.discomfort_scale = config.getfloat("reward", "discomfort_scale", fallback=1.0)
         self.discomfort_penalty_factor = config.getfloat("reward", "discomfort_penalty_factor")
@@ -178,11 +180,11 @@ class CrowdSim(gym.Env):
     def set_obstacles(self, obs):
         self.obstacles = obs
 
-    def set_scene(self, scenario=None):
+    def set_scene(self, scenario=None, seed=None):
         if self.scene_manager is None:
-            self.scene_manager = SceneManager(scenario, self.robot, self.config)
+            self.scene_manager = SceneManager(scenario, self.robot, self.config, seed)
         else:
-            self.scene_manager.set_scenario(scenario)
+            self.scene_manager.set_scenario(scenario, seed)
 
     def get_human_times(self):
         """
@@ -292,12 +294,10 @@ class CrowdSim(gym.Env):
 
                 human_num = self.human_num if self.robot.policy.multiagent_training else 1
                 if phase in ["train", "val"]:
-                    self.set_scene(self.train_val_sim)
+                    self.set_scene(self.train_val_sim, counter_offset[phase] + self.case_counter[phase])
                 else:
-                    self.set_scene(self.test_sim)
-                self.scene_manager.spawn(
-                    num_human=human_num, use_groups=self.use_groups, set_robot=True
-                )
+                    self.set_scene(self.test_sim, counter_offset[phase] + self.case_counter[phase])
+                self.scene_manager.spawn(num_human=human_num, use_groups=self.use_groups)
                 (
                     self.humans,
                     self.obstacles,
@@ -355,6 +355,7 @@ class CrowdSim(gym.Env):
         # info contains the various contributions to the reward:
         self.episode_info = {
             "collisions": 0.0,
+            "static_obstacle_collisions": 0.0,
             "time": 0.0,
             "discomfort": 0.0,
             "progress": 0.0,
@@ -363,6 +364,7 @@ class CrowdSim(gym.Env):
             "global_time": 0.0,
             "did_timeout": 0.0,
             "did_collide": 0.0,
+            "did_collide_static_obstacle": 0.0,
             "did_succeed": 0.0,
         }
         return ob
@@ -447,6 +449,32 @@ class CrowdSim(gym.Env):
             elif human_dist < dmin:
                 dmin = human_dist
             human_distances.append(human_dist)
+
+
+        # collision detection between robot and static obstacle
+        static_obstacle_dmin = float("inf")
+        static_obstacle_collision = 0
+        obstacle_distances = list()
+        min_dist = self.robot.radius
+        px = self.robot.px
+        py = self.robot.py
+
+        if self.robot.kinematics == "holonomic":
+            vx = action.vx
+            vy = action.vy
+        else:
+            vx = action.v * np.cos(action.r + self.robot.theta)
+            vy = action.v * np.sin(action.r + self.robot.theta)
+        ex = px + vx * self.time_step
+        ey = py + vy * self.time_step
+        for i, obstacle in enumerate(self.obstacles):
+            robot_position = ex,ey
+            obst_dist = self.scene_manager.line_distance(obstacle, robot_position)
+            if obst_dist < min_dist:
+                static_obstacle_collision += 1
+                self.episode_info['static_obstacle_collisions'] -= self.static_obstacle_collision_penalty
+                break
+
         # collision detection between humans
         human_num = len(self.humans)
         for i in range(human_num):
@@ -483,6 +511,7 @@ class CrowdSim(gym.Env):
             info = Timeout()
             self.episode_info["did_succeed"] = 0.0
             self.episode_info["did_collide"] = 0.0
+            self.episode_info["did_collide_static_obstacle"] = 0.0
             self.episode_info["did_timeout"] = 1.0
         if collisions > 0:
             reward -= self.collision_penalty * collisions
@@ -491,6 +520,17 @@ class CrowdSim(gym.Env):
             info = Collision()
             self.episode_info["did_succeed"] = 0.0
             self.episode_info["did_collide"] = 1.0
+            self.episode_info["did_collide_static_obstacle"] = 0.0
+            self.episode_info["did_timeout"] = 0.0
+
+        if static_obstacle_collision > 0:
+            reward -= self.static_obstacle_collision_penalty * static_obstacle_collision
+            if self.end_on_collision:
+                done = True
+            info = Collision()
+            self.episode_info["did_succeed"] = 0.0
+            self.episode_info["did_collide"] = 0.0
+            self.episode_info["did_collide_static_obstacle"] = 1.0
             self.episode_info["did_timeout"] = 0.0
         if reaching_goal:
             reward += self.success_reward
@@ -499,6 +539,7 @@ class CrowdSim(gym.Env):
             self.episode_info["goal"] = self.success_reward
             self.episode_info["did_succeed"] = 1.0
             self.episode_info["did_collide"] = 0.0
+            self.episode_info["did_collide_static_obstacle"] = 0.0
             self.episode_info["did_timeout"] = 0.0
         for human_dist in human_distances:
             if 0 <= human_dist < self.discomfort_dist * self.discomfort_scale:

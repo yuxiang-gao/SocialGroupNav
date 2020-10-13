@@ -24,8 +24,8 @@ class Scenario(Enum):
 
 
 class ScenarioConfig:
-    def __init__(self, scenario, config):
-        self.rng = np.random.default_rng()
+    def __init__(self, scenario, config, seed):
+        self.rng = np.random.default_rng(seed)
         if type(scenario) == Scenario:
             self.scenario = scenario
         else:
@@ -101,17 +101,18 @@ class ScenarioConfig:
 
 
 class SceneManager(object):
-    def __init__(self, scenario, robot, config):
+    def __init__(self, scenario, robot, config, seed):
         self.humans = []
         self.membership = []
         self.scenario_config = None
         # self.obstacles_sampled = None
+        self.rng = None
+
 
         self.configure(config)
-        self.set_scenario(scenario)
+        self.set_scenario(scenario, seed)
         self.robot = robot
 
-        self.rng = np.random.default_rng()
 
     def configure(self, config):
         self.config = config
@@ -120,12 +121,13 @@ class SceneManager(object):
         self.discomfort_dist = self.config.getfloat("reward", "discomfort_dist")
         self.randomize_attributes = self.config.getboolean("env", "randomize_attributes")
 
-    def set_scenario(self, scenario):
+    def set_scenario(self, scenario, seed):
         self.humans = []
         self.membership = []
-        self.scenario_config = ScenarioConfig(scenario, self.config)
+        self.scenario_config = ScenarioConfig(scenario, self.config, seed)
         # pass obstacles to Agent class
         JointState.obstacles = self.get_obstacles()
+        self.rng = np.random.default_rng(seed=seed)
         # self.obstacles_sampled = self.sample_obstalces(self.get_obstacles())
 
     def get_current_scenario(self):
