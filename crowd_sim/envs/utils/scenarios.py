@@ -46,6 +46,7 @@ class ScenarioConfig:
                 ]
             )
             self.spawn_positions = [[-self.width, self.width / 2], [self.width / 2, -self.width]]
+            self.robot_spawn_positions = self.spawn_positions
         elif self.scenario == Scenario.CORRIDOR:
             length = 5
             self.obstacles = np.array(
@@ -55,8 +56,7 @@ class ScenarioConfig:
                 ]
             )
             self.spawn_positions = [[length, 0], [-length, 0]]
-            self.robot_spawn_positions = [[length+1, -1], [-length-1, +1]]
-
+            self.robot_spawn_positions = [[length + 1, -1], [-length - 1, +1]]
         elif self.scenario == Scenario.T_INTERSECTION:
             length = 5
             self.obstacles = [
@@ -71,6 +71,7 @@ class ScenarioConfig:
                 [length, self.width / 2],
                 [0, -length],
             ]
+            self.robot_spawn_positions = self.spawn_positions
 
     def configure(self, config):
         self.v_pref = config.getfloat("humans", "v_pref")
@@ -79,8 +80,15 @@ class ScenarioConfig:
         self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
 
     def get_robot_spawn_position(self):
-        p_idx, g_idx = np.random.choice(range(len(self.robot_spawn_positions)), 2, replace=False)
-        return self.robot_spawn_positions[p_idx], self.robot_spawn_positions[g_idx]
+        if self.scenario == Scenario.CIRCLE_CROSSING:
+            angle = self.rng.random() * np.pi * 2
+            p = self.circle_radius * np.array([np.cos(angle), np.sin(angle)])
+            return p, -p
+        else:
+            p_idx, g_idx = np.random.choice(
+                range(len(self.robot_spawn_positions)), 2, replace=False
+            )
+            return self.robot_spawn_positions[p_idx], self.robot_spawn_positions[g_idx]
 
     def get_spawn_position(self):  # return (center, goal), no noise
         if self.scenario == Scenario.CIRCLE_CROSSING:
@@ -113,11 +121,9 @@ class SceneManager(object):
         # self.obstacles_sampled = None
         self.rng = None
 
-
         self.configure(config)
         self.set_scenario(scenario, seed)
         self.robot = robot
-
 
     def configure(self, config):
         self.config = config
