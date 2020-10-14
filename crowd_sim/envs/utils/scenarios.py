@@ -55,7 +55,7 @@ class ScenarioConfig:
                 ]
             )
             self.spawn_positions = [[length, 0], [-length, 0]]
-            self.robot_spawn_positions = [[length+1, 0], [-length-1, 0]]
+            self.robot_spawn_positions = [[length+1, -1], [-length-1, +1]]
 
         elif self.scenario == Scenario.T_INTERSECTION:
             length = 5
@@ -79,8 +79,8 @@ class ScenarioConfig:
         self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
 
     def get_robot_spawn_position(self):
-        p_idx, g_idx = np.random.choice(range(len(self.spawn_positions)), 2, replace=False)
-        return self.robot_spawn_positions[p_idx], self.spawn_positions[g_idx]
+        p_idx, g_idx = np.random.choice(range(len(self.robot_spawn_positions)), 2, replace=False)
+        return self.robot_spawn_positions[p_idx], self.robot_spawn_positions[g_idx]
 
     def get_spawn_position(self):  # return (center, goal), no noise
         if self.scenario == Scenario.CIRCLE_CROSSING:
