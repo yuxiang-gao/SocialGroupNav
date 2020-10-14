@@ -188,32 +188,30 @@ class SceneManager(object):
             self.humans += self.spawn_group(size, center, goal)
 
     def spawn_robot(self, center, goal):
-        noise = (self.rng.random(2) - 0.5) * (self.robot_radius * 2 + self.discomfort_dist)
+        noise = self.random_vector(length=(self.robot_radius * 2 + self.discomfort_dist))
         spawn_pos = center + noise  # spawn noise based on group size
         agent_radius = self.robot_radius
         while True:
             if not self.check_collision(spawn_pos, robot=True):  # break if there is no collision
                 break
             else:
-                spawn_pos += (
-                    self.rng.random(2) - 0.5
-                ) * agent_radius  # gentlely nudge the new ped to avoid collision
+                spawn_pos += self.random_vector(
+                    length=agent_radius
+                )  # gentlely nudge the new ped to avoid collision
         self.robot.set(*spawn_pos, *goal, 0, 0, 0)
 
     def spawn_group(self, size, center, goal):
         humans = []
         while True:
-            noise = (
-                (self.rng.random(2) - 0.5) * (self.human_radius * 2 + self.discomfort_dist) * size
-            )
+            noise = self.random_vector(length=(self.human_radius * 2 + self.discomfort_dist) * size)
             spawn_pos = center + noise  # spawn noise based on group size
             while True:
                 if not self.check_collision(spawn_pos, humans):  # break if there is no collision
                     break
                 else:
-                    spawn_pos += (
-                        self.rng.random(2) - 0.5
-                    ) * self.human_radius  # gentlely nudge the new ped to avoid collision
+                    spawn_pos += self.random_vector(
+                        length=self.human_radius
+                    )  # gentlely nudge the new ped to avoid collision
 
             human = Human(self.config, "humans")
             if self.randomize_attributes:
@@ -240,6 +238,10 @@ class SceneManager(object):
             if self.line_distance(ob, position) < min_dist:
                 return True
         return False
+
+    def random_vector(self, length=1.0):
+        vec = self.rng.random(2) - 0.5
+        return vec / norm(vec) * length
 
     @staticmethod
     def line_distance(line, point):
