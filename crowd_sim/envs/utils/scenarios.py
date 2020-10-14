@@ -34,7 +34,7 @@ class ScenarioConfig:
 
         self.obstacles = []
         self.spawn_positions = []
-        self.width = 5
+        self.width = 7
 
         if self.scenario == Scenario.CORNER:
             self.obstacles = np.array(
@@ -55,6 +55,7 @@ class ScenarioConfig:
                 ]
             )
             self.spawn_positions = [[length, 0], [-length, 0]]
+            self.robot_spawn_positions = [[length+1, 0], [-length-1, 0]]
 
         elif self.scenario == Scenario.T_INTERSECTION:
             length = 5
@@ -76,6 +77,10 @@ class ScenarioConfig:
         self.circle_radius = config.getfloat("sim", "circle_radius")
         self.human_radius = config.getfloat("humans", "radius")
         self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
+
+    def get_robot_spawn_position(self):
+        p_idx, g_idx = np.random.choice(range(len(self.spawn_positions)), 2, replace=False)
+        return self.robot_spawn_positions[p_idx], self.spawn_positions[g_idx]
 
     def get_spawn_position(self):  # return (center, goal), no noise
         if self.scenario == Scenario.CIRCLE_CROSSING:
@@ -166,7 +171,7 @@ class SceneManager(object):
 
         # Spawn robot
         if set_robot:
-            center, goal = self.scenario_config.get_spawn_position()
+            center, goal = self.scenario_config.get_robot_spawn_position()
             logging.info(f"Spawn robot, center: {center}, goal: {goal}")
             self.spawn_robot(center, goal)
 
