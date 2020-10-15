@@ -71,6 +71,11 @@ class ScenarioConfig:
                 [length, self.width / 2],
                 [0, -length],
             ]
+            self.robot_spawn_positions = [
+                [-length-1, self.width / 2+1],
+                [length+1, self.width / 2+1],
+                [1, -length-1],
+            ]
 
     def configure(self, config):
         self.v_pref = config.getfloat("humans", "v_pref")
