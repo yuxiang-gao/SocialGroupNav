@@ -46,6 +46,7 @@ class ScenarioConfig:
                 ]
             )
             self.spawn_positions = [[-self.width, self.width / 2], [self.width / 2, -self.width]]
+            self.robot_spawn_positions = self.spawn_positions
         elif self.scenario == Scenario.CORRIDOR:
             length = 5
             self.obstacles = np.array(
@@ -55,8 +56,7 @@ class ScenarioConfig:
                 ]
             )
             self.spawn_positions = [[length, 0], [-length, 0]]
-            self.robot_spawn_positions = [[length+1, -1], [-length-1, +1]]
-
+            self.robot_spawn_positions = [[length + 1, -1], [-length - 1, +1]]
         elif self.scenario == Scenario.T_INTERSECTION:
             length = 5
             self.obstacles = [
@@ -77,6 +77,7 @@ class ScenarioConfig:
                 [1, -length-1],
             ]
 
+
     def configure(self, config):
         self.v_pref = config.getfloat("humans", "v_pref")
         self.circle_radius = config.getfloat("sim", "circle_radius")
@@ -84,8 +85,15 @@ class ScenarioConfig:
         self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
 
     def get_robot_spawn_position(self):
-        p_idx, g_idx = np.random.choice(range(len(self.robot_spawn_positions)), 2, replace=False)
-        return self.robot_spawn_positions[p_idx], self.robot_spawn_positions[g_idx]
+        if self.scenario == Scenario.CIRCLE_CROSSING:
+            angle = self.rng.random() * np.pi * 2
+            p = self.circle_radius * np.array([np.cos(angle), np.sin(angle)])
+            return p, -p
+        else:
+            p_idx, g_idx = np.random.choice(
+                range(len(self.robot_spawn_positions)), 2, replace=False
+            )
+            return self.robot_spawn_positions[p_idx], self.robot_spawn_positions[g_idx]
 
     def get_spawn_position(self):  # return (center, goal), no noise
         if self.scenario == Scenario.CIRCLE_CROSSING:
@@ -118,11 +126,9 @@ class SceneManager(object):
         # self.obstacles_sampled = None
         self.rng = None
 
-
         self.configure(config)
         self.set_scenario(scenario, seed)
         self.robot = robot
-
 
     def configure(self, config):
         self.config = config
@@ -187,32 +193,30 @@ class SceneManager(object):
             self.humans += self.spawn_group(size, center, goal)
 
     def spawn_robot(self, center, goal):
-        noise = (self.rng.random(2) - 0.5) * (self.robot_radius * 2 + self.discomfort_dist)
+        noise = self.random_vector(length=(self.robot_radius * 2 + self.discomfort_dist))
         spawn_pos = center + noise  # spawn noise based on group size
         agent_radius = self.robot_radius
         while True:
             if not self.check_collision(spawn_pos, robot=True):  # break if there is no collision
                 break
             else:
-                spawn_pos += (
-                    self.rng.random(2) - 0.5
-                ) * agent_radius  # gentlely nudge the new ped to avoid collision
+                spawn_pos += self.random_vector(
+                    length=agent_radius
+                )  # gentlely nudge the new ped to avoid collision
         self.robot.set(*spawn_pos, *goal, 0, 0, 0)
 
     def spawn_group(self, size, center, goal):
         humans = []
         while True:
-            noise = (
-                (self.rng.random(2) - 0.5) * (self.human_radius * 2 + self.discomfort_dist) * size
-            )
+            noise = self.random_vector(length=(self.human_radius * 2 + self.discomfort_dist) * size)
             spawn_pos = center + noise  # spawn noise based on group size
             while True:
                 if not self.check_collision(spawn_pos, humans):  # break if there is no collision
                     break
                 else:
-                    spawn_pos += (
-                        self.rng.random(2) - 0.5
-                    ) * self.human_radius  # gentlely nudge the new ped to avoid collision
+                    spawn_pos += self.random_vector(
+                        length=self.human_radius
+                    )  # gentlely nudge the new ped to avoid collision
 
             human = Human(self.config, "humans")
             if self.randomize_attributes:
@@ -239,6 +243,10 @@ class SceneManager(object):
             if self.line_distance(ob, position) < min_dist:
                 return True
         return False
+
+    def random_vector(self, length=1.0):
+        vec = self.rng.random(2) - 0.5
+        return vec / norm(vec) * length
 
     @staticmethod
     def line_distance(line, point):
