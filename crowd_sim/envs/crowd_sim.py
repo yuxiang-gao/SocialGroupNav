@@ -960,16 +960,16 @@ class CrowdSim(gym.Env):
             time = plt.text(-1, 5, "Time: {}".format(0), fontsize=16)
             ax.add_artist(time)
             # compute attention scores
-            if self.attention_weights is not None and self.robot.sensor.lower() == "coordinates":
-                attention_scores = [
-                    plt.text(
-                        -5.5,
-                        5 - 0.5 * i,
-                        "Human {}: {:.2f}".format(i + 1, self.attention_weights[0][i]),
-                        fontsize=16,
-                    )
-                    for i in range(len(self.humans))
-                ]
+            # if self.attention_weights is not None and self.robot.sensor.lower() == "coordinates":
+            #     attention_scores = [
+            #         plt.text(
+            #             -5.5,
+            #             5 - 0.5 * i,
+            #             "Human {}: {:.2f}".format(i + 1, self.attention_weights[0][i]),
+            #             fontsize=16,
+            #         )
+            #         for i in range(len(self.humans))
+            #     ]
             # compute orientation in each step and use arrow to show the direction
             radius = self.robot.radius
             if self.robot.kinematics == "unicycle":
@@ -1032,14 +1032,14 @@ class CrowdSim(gym.Env):
                     ]
                     for arrow in arrows:
                         ax.add_artist(arrow)
-                    if (
-                        self.attention_weights is not None
-                        and self.robot.sensor.lower() == "coordinates"
-                    ):
-                        # human.set_color(str(self.attention_weights[frame_num][i]))
-                        attention_scores[i].set_text(
-                            "human {}: {:.2f}".format(i, self.attention_weights[frame_num][i])
-                        )
+                    # if (
+                    #     self.attention_weights is not None
+                    #     and self.robot.sensor.lower() == "coordinates"
+                    # ):
+                    #     # human.set_color(str(self.attention_weights[frame_num][i]))
+                    #     attention_scores[i].set_text(
+                    #         "human {}: {:.2f}".format(i, self.attention_weights[frame_num][i])
+                    #     )
 
                 time.set_text("Time: {:.2f}".format(frame_num * self.time_step))
 
