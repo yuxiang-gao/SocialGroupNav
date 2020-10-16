@@ -58,7 +58,7 @@ class ScenarioConfig:
             self.spawn_positions = [[length, 0], [-length, 0]]
             self.robot_spawn_positions = [[length + 1, -1], [-length - 1, +1]]
         elif self.scenario == Scenario.T_INTERSECTION:
-            length = 5
+            length = 7
             self.obstacles = [
                 [-length, length, self.width, self.width],
                 [-length, -self.width / 2, 0, 0],
