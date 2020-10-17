@@ -51,8 +51,8 @@ class ScenarioConfig:
             length = 5
             self.obstacles = np.array(
                 [
-                    [-length, length, self.width / 2, self.width / 2],
-                    [-length, length, -self.width / 2, -self.width / 2],
+                    [-length-2, length+2, self.width / 2, self.width / 2],
+                    [-length-2, length+2, -self.width / 2, -self.width / 2],
                 ]
             )
             self.spawn_positions = [[length, 0], [-length, 0]]
