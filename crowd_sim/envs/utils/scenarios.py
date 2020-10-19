@@ -7,7 +7,7 @@ from numpy.linalg import norm
 
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.state import JointState
-from crowd_sim.envs.utils.utils import point_to_segment_dist
+from crowd_sim.envs.utils.utils import line_distance
 
 
 class Scenario(Enum):
@@ -34,6 +34,7 @@ class ScenarioConfig:
 
         self.obstacles = []
         self.spawn_positions = []
+        self.map_size = (10, 10)  # half width and height, assumed to be symmetric
         self.width = 7
 
         if self.scenario == Scenario.CORNER:
@@ -106,6 +107,20 @@ class ScenarioConfig:
 
         center, goal = self.get_spawn_position()
         return center + noise, goal + noise
+
+    def calc_closest_obstacle_map(self, threshold=3):
+        x = np.arange(-self.map_size[0], self.map_size[0], 0.1)
+        y = np.arange(-self.map_size[1], self.map_size[1], 0.1)
+        xx, yy = np.meshgrid(x, y, sparse=True)
+        z = None
+        for ob in self.obstacles:
+            dist = line_distance(ob, (xx, yy))
+            if z is None:
+                z = dist
+            else:
+                z = np.minimum(z, dist)
+        z[z > threshold] = 0
+        return z
 
 
 class SceneManager(object):
@@ -229,19 +244,21 @@ class SceneManager(object):
         # Check with obstacles
         for ob in self.get_obstacles():
             min_dist = self.human_radius + self.discomfort_dist
-            if self.line_distance(ob, position) < min_dist:
+            if line_distance(ob, position) < min_dist:
                 return True
         return False
+
+    def get_closest_obstacle(self, position):
+        min_dist = np.inf
+        for ob in self.get_obstacles():
+            dist = line_distance(ob, position)
+            if dist < min_dist:
+                min_dist = dist
+        return min_dist
 
     def random_vector(self, length=1.0):
         vec = self.rng.random(2) - 0.5
         return vec / norm(vec) * length
-
-    @staticmethod
-    def line_distance(line, point):
-        """Euclidean distance between a point and a line (x_min, x_max, y_min,  y_max)"""
-        endpoints = np.array(line)[[0, 2, 1, 3]]
-        return point_to_segment_dist(*endpoints, *point)
 
     @staticmethod
     def split_array(array, split):
