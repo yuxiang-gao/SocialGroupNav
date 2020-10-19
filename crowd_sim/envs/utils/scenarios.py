@@ -51,8 +51,8 @@ class ScenarioConfig:
             length = 5
             self.obstacles = np.array(
                 [
-                    [-length-2, length+2, self.width / 2, self.width / 2],
-                    [-length-2, length+2, -self.width / 2, -self.width / 2],
+                    [-length - 2, length + 2, self.width / 2, self.width / 2],
+                    [-length - 2, length + 2, -self.width / 2, -self.width / 2],
                 ]
             )
             self.spawn_positions = [[length, 0], [-length, 0]]
@@ -71,11 +71,7 @@ class ScenarioConfig:
                 [length, self.width / 2],
                 [0, -length],
             ]
-            self.robot_spawn_positions = [
-                [0, -length-1],
-                [length+1, self.width / 2+1]
-            ]
-
+            self.robot_spawn_positions = [[0, -length - 1], [length + 1, self.width / 2 + 1]]
 
     def configure(self, config):
         self.v_pref = config.getfloat("humans", "v_pref")
@@ -202,8 +198,7 @@ class SceneManager(object):
     def spawn_group(self, size, center, goal):
         humans = []
         while True:
-            noise = self.random_vector(length=(self.human_radius * 2 + self.discomfort_dist) * size)
-            spawn_pos = center + noise  # spawn noise based on group size
+            spawn_pos = center
             while True:
                 if not self.check_collision(spawn_pos, humans):  # break if there is no collision
                     break

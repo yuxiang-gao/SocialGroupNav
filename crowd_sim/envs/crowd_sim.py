@@ -124,8 +124,9 @@ class CrowdSim(gym.Env):
         # Reward:
         self.success_reward = config.getfloat("reward", "success_reward")
         self.collision_penalty = config.getfloat("reward", "collision_penalty")
-        self.static_obstacle_collision_penalty = config.getfloat("reward", "static_obstacle_collision_penalty",
-                                                                 fallback=self.collision_penalty)
+        self.static_obstacle_collision_penalty = config.getfloat(
+            "reward", "static_obstacle_collision_penalty", fallback=self.collision_penalty
+        )
         self.discomfort_dist = config.getfloat("reward", "discomfort_dist")
         self.discomfort_scale = config.getfloat("reward", "discomfort_scale", fallback=1.0)
         self.discomfort_penalty_factor = config.getfloat("reward", "discomfort_penalty_factor")
@@ -294,7 +295,9 @@ class CrowdSim(gym.Env):
 
                 human_num = self.human_num if self.robot.policy.multiagent_training else 1
                 if phase in ["train", "val"]:
-                    self.set_scene(self.train_val_sim, counter_offset[phase] + self.case_counter[phase])
+                    self.set_scene(
+                        self.train_val_sim, counter_offset[phase] + self.case_counter[phase]
+                    )
                 else:
                     self.set_scene(self.test_sim, counter_offset[phase] + self.case_counter[phase])
                 self.scene_manager.spawn(num_human=human_num, use_groups=self.use_groups)
@@ -450,7 +453,6 @@ class CrowdSim(gym.Env):
                 dmin = human_dist
             human_distances.append(human_dist)
 
-
         # collision detection between robot and static obstacle
         static_obstacle_dmin = float("inf")
         static_obstacle_collision = 0
@@ -468,11 +470,13 @@ class CrowdSim(gym.Env):
         ex = px + vx * self.time_step
         ey = py + vy * self.time_step
         for i, obstacle in enumerate(self.obstacles):
-            robot_position = ex,ey
+            robot_position = ex, ey
             obst_dist = self.scene_manager.line_distance(obstacle, robot_position)
             if obst_dist < min_dist:
                 static_obstacle_collision += 1
-                self.episode_info['static_obstacle_collisions'] -= self.static_obstacle_collision_penalty
+                self.episode_info[
+                    "static_obstacle_collisions"
+                ] -= self.static_obstacle_collision_penalty
                 break
 
         # collision detection between humans
@@ -885,8 +889,9 @@ class CrowdSim(gym.Env):
         elif mode == "video":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            ax.set_xlim(-7, 7)
-            ax.set_ylim(-7, 7)
+            size = 10
+            ax.set_xlim(-size, size)
+            ax.set_ylim(-size, size)
             ax.set_xlabel("x(m)", fontsize=16)
             ax.set_ylabel("y(m)", fontsize=16)
 
