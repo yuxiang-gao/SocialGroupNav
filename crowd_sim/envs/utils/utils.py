@@ -15,16 +15,18 @@ def point_to_segment_dist(x1, y1, x2, y2, x3, y3):
 
     u = ((x3 - x1) * px + (y3 - y1) * py) / (px * px + py * py)
 
-    if u > 1:
-        u = 1
-    elif u < 0:
-        u = 0
+    u = np.clip(u, 0, 1)
 
     # (x, y) is the closest point to (x3, y3) on the line segment
     x = x1 + u * px
     y = y1 + u * py
+    return np.hypot(x - x3, y - y3)
 
-    return np.linalg.norm((x - x3, y - y3))
+
+def line_distance(line, point):
+    """Euclidean distance between a point and a line (x_min, x_max, y_min,  y_max)"""
+    endpoints = np.array(line)[[0, 2, 1, 3]]
+    return point_to_segment_dist(*endpoints, *point)
 
 
 # helper functions for minimum spanning circle
