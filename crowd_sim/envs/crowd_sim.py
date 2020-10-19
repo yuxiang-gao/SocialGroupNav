@@ -15,6 +15,7 @@ from crowd_sim.envs.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
 from crowd_sim.envs.utils.utils import *
+from crowd_sim.envs.utils.render import App
 from crowd_sim.envs.utils.scenarios import Scenario, ScenarioConfig, SceneManager
 
 
@@ -89,6 +90,8 @@ class CrowdSim(gym.Env):
         self.intent_type = None
 
         self.obstacles = []  # xmin,xmax,ymin,ymax
+
+        self.app = None
 
     def configure(self, config):
         self.config = config
@@ -754,6 +757,13 @@ class CrowdSim(gym.Env):
             raise ValueError("Robot sensor incompatible with pixel observation.")
 
     def render(self, mode="video"):
+        if mode == "teleop":
+            if self.app is None:
+                self.app = App(self)
+                self.app.on_execute()
+            else:
+                pass
+            return
         from matplotlib import animation
         import matplotlib.pyplot as plt
 
