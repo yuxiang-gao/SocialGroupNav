@@ -471,7 +471,7 @@ class CrowdSim(gym.Env):
         ey = py + vy * self.time_step
         for i, obstacle in enumerate(self.obstacles):
             robot_position = ex, ey
-            obst_dist = self.scene_manager.line_distance(obstacle, robot_position)
+            obst_dist = line_distance(obstacle, robot_position)
             if obst_dist < min_dist:
                 static_obstacle_collision += 1
                 self.episode_info[
