@@ -227,9 +227,12 @@ class GameRobot(GameAgent):
         self.turn = 10
         self.moving = False
 
-    def handle_input(self, cmd):
-        # key_input = pygame.key.get_pressed()
-        # _, cmd = lookup_cmd_dict(key_input)
+    def handle_input(self):
+        action = ActionXY(0, 0)
+        key_input = pygame.key.get_pressed()
+        _, cmd = lookup_cmd_dict(key_input)
+        if cmd is None:
+            return action
         vx, vy = 0, 0
         if len(cmd) == 4:
             x, _, _, th = cmd
@@ -330,17 +333,13 @@ class App:
 
             # elif event.type == MOUSEMOTION and self.robot.moving:
             #     self.robot.rect.move_ip(event.rel)
-            else:
-                cmd_type, cmd = lookup_cmd(event.key)
-                if cmd is not None:
-                    action = self.robot.handle_input(cmd)
-                    # logging.info(f"{cmd_type} cmd: {cmd}.")
-                    return action
-        return None
-
-    def on_loop(self):
-
-        pass
+            # else:
+            #     cmd_type, cmd = lookup_cmd(event.key)
+            #     if cmd is not None:
+            #         action = self.robot.handle_input(cmd)
+            #         # logging.info(f"{cmd_type} cmd: {cmd}.")
+            #         return action
+        # return None
 
     def on_render(self):
         self._display.fill(WHITE)
@@ -392,15 +391,14 @@ class App:
         while self._running:
             for event in pygame.event.get():
                 self.on_event(event)
-            self.on_loop()
             self.on_render()
         self.on_cleanup()
 
     def step(self):
         action = None
         for event in pygame.event.get():
-            action = self.on_event(event)
-        self.on_loop()
+            self.on_event(event)
+        action = self.robot.handle_input()
         self.on_render()
         self.clock.tick(40)
         return action if action is not None else ActionXY(0, 0)
