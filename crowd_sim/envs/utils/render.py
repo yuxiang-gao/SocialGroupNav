@@ -6,6 +6,8 @@ import pygame
 from pygame.locals import *
 import matplotlib.pyplot as plt
 
+from crowd_sim.envs.utils.action import ActionXY, ActionRot
+
 cmap = plt.cm.get_cmap("tab20")
 cmap2 = plt.cm.get_cmap("Set1")
 robot_color = cmap2(1)
@@ -168,25 +170,83 @@ def lookup_cmd(key_down):
     return None, None
 
 
-class Player:
-    def __init__(self, pos, color):
-        self.rect = pygame.rect.Rect((*pos, 10, 10))
-        self.color = color
+def lookup_cmd_dict(key_input):
+    for key, value in KEY_LOOKUP.items():
+        if key_input[value]:
+            logging.info(f"Key {key} pushed.")
+            if key in MOVE_BINDINGS.keys():
+                return "move", MOVE_BINDINGS.get(key)
+            elif key in SPEED_BINDINGS.keys():
+                return "speed", SPEED_BINDINGS.get(key)
+    return None, None
 
-    def handle_input(self):
-        key = pygame.key.get_pressed()
-        dist = 1
-        if key[pygame.K_LEFT]:
-            self.rect.move_ip(-1, 0)
-        if key[pygame.K_RIGHT]:
-            self.rect.move_ip(1, 0)
-        if key[pygame.K_UP]:
-            self.rect.move_ip(0, -1)
-        if key[pygame.K_DOWN]:
-            self.rect.move_ip(0, 1)
 
-    def draw(self, surface):
-        pygame.draw.rect(surface, self.color, self.rect)
+class GameAgent(pygame.sprite.Sprite):
+    def __init__(
+        self,
+        pos=(0, 0),
+        angle=0,
+        radius=10,
+        color=BLACK,
+        image="crowd_sim/envs/utils/resources/ped_avatar.png",
+    ):
+        super().__init__()
+        self.original_image = pygame.image.load(image)
+        self.original_image = pygame.transform.rotate(self.original_image, -90)
+        self.original_image = pygame.transform.scale(self.original_image, (2 * radius, 2 * radius))
+
+        # pygame.draw.circle(self.original_image, color, (radius, radius), radius, 3)
+        pygame.draw.rect(self.original_image, color, (0, 0, 2 * radius, 2 * radius), 2)
+        self.image = self.original_image
+        self.rect = self.image.get_rect()
+        self.rect.center = pos
+        self.pos = pos
+        self.angle = angle
+
+    def update(self, pos, angle):
+        self.pos = pos
+        self.angle = angle
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect()
+        self.rect.center = pos
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+
+class GameHuman(GameAgent):
+    def __init__(self, pos, color, id, radius=10):
+        super().__init__(pos=pos, color=color)
+        self.id = id
+
+
+class GameRobot(GameAgent):
+    def __init__(self, pos, color, radius=10):
+        super().__init__(pos=pos, color=color, image="crowd_sim/envs/utils/resources/robot.png")
+        self.speed = 2
+        self.turn = 10
+        self.moving = False
+
+    def handle_input(self, cmd):
+        # key_input = pygame.key.get_pressed()
+        # _, cmd = lookup_cmd_dict(key_input)
+        vx, vy = 0, 0
+        if len(cmd) == 4:
+            x, _, _, th = cmd
+            th = self.angle + th * self.turn
+            vx = np.cos(np.deg2rad(th)) * x
+            vy = np.sin(np.deg2rad(th)) * x
+            vx *= self.speed
+            vy *= self.speed
+            self.update((self.pos[0] + vx, self.pos[1] + vy), th)
+            # print(th, vx, vy)
+        elif len(cmd) == 2:
+            self.speed *= cmd[0]
+            self.turn *= cmd[1]
+
+        action = ActionXY(vx, vy)
+
+        return action
 
 
 # %%
@@ -201,7 +261,8 @@ class App:
         self.sim_size = np.array(self.env.scene_manager.scenario_config.map_size)
         self.scale = self.size / 2 / self.sim_size
 
-        self.player = None
+        self.robot = None
+        self.humans = []
 
         # generate color mapping
         self.human_colors = [0] * len(self.env.humans)
@@ -209,6 +270,10 @@ class App:
             group_color = App.convert_color(cmap(i))
             for idx in self.env.group_membership[i]:
                 self.human_colors[idx] = group_color
+
+        for idx in self.env.individual_membership:
+            ind_color = App.convert_color(cmap(len(self.env.group_membership) + idx))
+            self.human_colors[idx] = ind_color
 
     def sim_to_canvas(self, coord):
         coord = np.asarray(coord)
@@ -229,7 +294,24 @@ class App:
         pygame.display.set_caption("Social Group Navigation")
         self._running = True
 
-        self.player = Player(self.sim_to_canvas(self.env.robot.get_start_position()), robot_color)
+        # self.player = Player(
+        #     pos=self.sim_to_canvas(self.env.robot.get_start_position()), color=robot_color
+        # )
+        self.robot = GameRobot(
+            self.sim_to_canvas(self.env.robot.get_start_position()),
+            App.convert_color(robot_color),
+            radius=self.env.robot.radius * self.scale,
+        )
+
+        for i, human in enumerate(self.env.states[-1][1]):
+            self.humans.append(
+                GameHuman(
+                    self.sim_to_canvas(human.position),
+                    self.human_colors[i],
+                    i,
+                    radius=self.env.humans[0].radius * self.scale,
+                )
+            )
 
     def on_event(self, event):
         if event.type == pygame.QUIT:
@@ -238,12 +320,27 @@ class App:
             if event.key == pygame.K_ESCAPE:
                 logging.info("Terminating.")
                 self._running = False
+
+            # elif event.type == MOUSEBUTTONDOWN:
+            #     if self.robot.rect.collidepoint(event.pos):
+            #         self.robot.moving = True
+
+            # elif event.type == MOUSEBUTTONUP:
+            #     self.robot.moving = False
+
+            # elif event.type == MOUSEMOTION and self.robot.moving:
+            #     self.robot.rect.move_ip(event.rel)
             else:
                 cmd_type, cmd = lookup_cmd(event.key)
-                logging.info(f"{cmd_type} cmd: {cmd}.")
+                if cmd is not None:
+                    action = self.robot.handle_input(cmd)
+                    # logging.info(f"{cmd_type} cmd: {cmd}.")
+                    return action
+        return None
 
     def on_loop(self):
-        self.player.handle_input()
+
+        pass
 
     def on_render(self):
         self._display.fill(WHITE)
@@ -272,7 +369,15 @@ class App:
                 10,
                 3,
             )
-        self.player.draw(self._display)
+
+        for i, human in enumerate(self.env.states[-1][1]):
+            self.angle = np.rad2deg(np.arctan2(human.vy, human.vx))
+            self.humans[i].update(self.sim_to_canvas(human.position), self.angle)
+            self.humans[i].draw(self._display)
+            # print(self.humans[i].id, self.humans[i].angle)
+
+        self.robot.update(self.sim_to_canvas(self.env.robot.get_position()), self.robot.angle)
+        self.robot.draw(self._display)
         # pygame.display.flip()
         pygame.display.update()
         self.clock.tick(40)
@@ -290,6 +395,15 @@ class App:
             self.on_loop()
             self.on_render()
         self.on_cleanup()
+
+    def step(self):
+        action = None
+        for event in pygame.event.get():
+            action = self.on_event(event)
+        self.on_loop()
+        self.on_render()
+        self.clock.tick(40)
+        return action if action is not None else ActionXY(0, 0)
 
     @staticmethod
     def convert_color(mat_color):

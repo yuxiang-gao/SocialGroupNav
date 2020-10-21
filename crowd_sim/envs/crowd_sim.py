@@ -760,10 +760,11 @@ class CrowdSim(gym.Env):
         if mode == "teleop":
             if self.app is None:
                 self.app = App(self)
-                self.app.on_execute()
-            else:
-                pass
-            return
+                # self.app.on_execute()
+                if self.app.on_init() is False:
+                    self.app._running = False
+
+            return self.app.step()
         from matplotlib import animation
         import matplotlib.pyplot as plt
 
