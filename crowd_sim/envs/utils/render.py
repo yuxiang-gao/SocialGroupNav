@@ -229,25 +229,34 @@ class GameRobot(GameAgent):
 
     def handle_input(self):
         action = ActionXY(0, 0)
-        key_input = pygame.key.get_pressed()
-        _, cmd = lookup_cmd_dict(key_input)
-        if cmd is None:
-            return action
-        vx, vy = 0, 0
-        if len(cmd) == 4:
-            x, _, _, th = cmd
-            th = self.angle + th * self.turn
-            vx = np.cos(np.deg2rad(th)) * x
-            vy = np.sin(np.deg2rad(th)) * x
-            vx *= self.speed
-            vy *= self.speed
+        if pygame.mouse.get_pressed()[0]:
+            pos_next = pygame.mouse.get_pos()
+            vx = pos_next[0] - self.pos[0]
+            vy = pos_next[1] - self.pos[1]
+            vx, vy = np.array([vx, vy]) / np.hypot(vx, vy) * self.speed
+            th = np.rad2deg(np.arctan2(-vy, vx))
             self.update((self.pos[0] + vx, self.pos[1] + vy), th)
-            # print(th, vx, vy)
-        elif len(cmd) == 2:
-            self.speed *= cmd[0]
-            self.turn *= cmd[1]
 
-        action = ActionXY(vx, vy)
+        else:
+            key_input = pygame.key.get_pressed()
+            _, cmd = lookup_cmd_dict(key_input)
+            if cmd is None:
+                return action
+            vx, vy = 0, 0
+            if len(cmd) == 4:
+                x, _, _, th = cmd
+                th = self.angle + th * self.turn
+                vx = np.cos(np.deg2rad(th)) * x
+                vy = -np.sin(np.deg2rad(th)) * x
+                vx *= self.speed
+                vy *= self.speed
+                self.update((self.pos[0] + vx, self.pos[1] + vy), th)
+                # print(th, vx, vy)
+            elif len(cmd) == 2:
+                self.speed *= cmd[0]
+                self.turn *= cmd[1]
+
+        action = ActionXY(vx, -vy)
 
         return action
 
