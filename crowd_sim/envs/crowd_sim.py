@@ -997,11 +997,11 @@ class CrowdSim(gym.Env):
                 )
                 force_orientations = [
                     np.asarray(
-                        [[robot_positions[s], agent_forces[s][0]]]
-                        + [
-                            [human_positions[s][i], agent_forces[s][i + 1]]
+                        [
+                            [human_positions[s][i], agent_forces[s][i]]
                             for i in range(len(self.humans))
                         ]
+                        + [[robot_positions[s], agent_forces[s][-1]]]
                     )
                     for s in range(len(self.states))
                 ]
