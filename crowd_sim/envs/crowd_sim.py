@@ -304,13 +304,15 @@ class CrowdSim(gym.Env):
                     np.random.seed(counter_offset[phase] + self.case_counter[phase])
 
                 human_num = self.human_num if self.robot.policy.multiagent_training else 1
+                seed = counter_offset[phase] + self.case_counter[phase]
+                # seed = 42
                 if phase in ["train", "val"]:
-                    self.set_scene(
-                        self.train_val_sim, counter_offset[phase] + self.case_counter[phase]
-                    )
+                    self.set_scene(self.train_val_sim, seed)
                 else:
-                    self.set_scene(self.test_sim, counter_offset[phase] + self.case_counter[phase])
-                self.scene_manager.spawn(num_human=human_num, use_groups=self.use_groups)
+                    self.set_scene(self.test_sim, seed)
+                self.scene_manager.spawn(
+                    num_human=human_num, use_groups=self.use_groups, group_sizes=None
+                )
                 (
                     self.humans,
                     self.obstacles,

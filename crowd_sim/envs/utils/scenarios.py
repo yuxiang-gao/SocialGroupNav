@@ -167,19 +167,22 @@ class SceneManager(object):
     def get_obstacles(self):
         return self.scenario_config.obstacles
 
-    def spawn(self, num_human=5, group_size_lambda=1.2, use_groups=True, set_robot=True):
+    def spawn(
+        self, num_human=5, group_size_lambda=1.2, use_groups=True, set_robot=True, group_sizes=None
+    ):
         # group_sizes = self.rng.poisson(group_size_lambda, num_groups) + 1  # no zeros
         # human_idx = np.array(range(sum(group_sizes)))
         if use_groups:
-            group_sizes = []
-            while True:
-                size = self.rng.poisson(group_size_lambda) + 1
-                if sum(group_sizes) + size > num_human:
-                    if num_human > sum(group_sizes):
-                        group_sizes.append(num_human - sum(group_sizes))
-                    break
-                else:
-                    group_sizes.append(size)
+            if group_sizes is None:
+                group_sizes = []
+                while True:
+                    size = self.rng.poisson(group_size_lambda) + 1
+                    if sum(group_sizes) + size > num_human:
+                        if num_human > sum(group_sizes):
+                            group_sizes.append(num_human - sum(group_sizes))
+                        break
+                    else:
+                        group_sizes.append(size)
         else:
             group_sizes = np.ones(num_human)
         human_idx = np.arange(num_human)
