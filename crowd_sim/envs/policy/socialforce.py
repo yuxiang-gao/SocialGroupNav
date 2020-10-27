@@ -12,6 +12,7 @@ class SocialForce(Policy):
         self.multiagent_training = None
         self.kinematics = "holonomic"
         self.sim = None
+        self.force_vectors = None
 
     def configure(self, config):
         return
@@ -47,13 +48,17 @@ class SocialForce(Policy):
                 (human_state.px, human_state.py, human_state.vx, human_state.vy, gx, gy)
             )
 
-        sim = Simulator(np.array(sf_state), groups=groups, obstacles=obstacles)
-        sim.step()
-        action = ActionXY(sim.peds.state[0, 2], sim.peds.state[0, 3])
+        self.sim = Simulator(np.array(sf_state), groups=groups, obstacles=obstacles)
+        self.sim.step()
+        action = ActionXY(self.sim.peds.state[0, 2], self.sim.peds.state[0, 3])
 
         self.last_state = state
+        self.force_vectors = self.sim.force_vectors.transpose((1, 0, 2))  # (num_ped, num_forces, 2)
 
         return action
+
+    def get_force_vectors(self):
+        return self.force_vectors
 
 
 class CentralizedSocialForce(SocialForce):
@@ -85,11 +90,15 @@ class CentralizedSocialForce(SocialForce):
                     agent_state.gy,
                 )
             )
-        sim = Simulator(np.array(sf_state), groups=groups, obstacles=obstacles)
-        sim.step()
-        self.forces = sim.forces
-        actions = [ActionXY(sim.peds.state[i, 2], sim.peds.state[i, 3]) for i in range(len(state))]
-        del sim
+        self.sim = Simulator(np.array(sf_state), groups=groups, obstacles=obstacles)
+        self.sim.step()
+        self.forces = self.sim.forces
+        actions = [
+            ActionXY(self.sim.peds.state[i, 2], self.sim.peds.state[i, 3])
+            for i in range(len(state))
+        ]
+        self.force_vectors = self.sim.force_vectors.transpose((1, 0, 2))  # (num_ped, num_forces, 2)
+        # del self.sim
 
         return actions
 

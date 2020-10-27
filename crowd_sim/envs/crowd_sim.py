@@ -71,6 +71,7 @@ class CrowdSim(gym.Env):
         self.train_val_sim = None
         self.test_sim = None
         # For visualization
+        self.forces = None
         self.states = None
         self.action_values = None
         self.attention_weights = None
@@ -115,7 +116,7 @@ class CrowdSim(gym.Env):
         self.num_groups = None
 
         self.centralized_planning = config.getboolean("sim", "centralized_planning", fallback=False)
-
+        self.visualize_force = config.getboolean("env", "visualize_force", fallback=True)
         human_policy = config.get("humans", "policy")
         if self.centralized_planning:
             self.centralized_planner = policy_factory["centralized_" + human_policy]()
@@ -163,6 +164,8 @@ class CrowdSim(gym.Env):
             self.square_width = config.getfloat("sim", "square_width")
             self.circle_radius = config.getfloat("sim", "circle_radius")
             self.human_num = config.getint("sim", "human_num")
+            if self.centralized_planning:
+                self.centralized_planner.force_vectors = np.zeros((self.human_num + 1, 6, 2))
         else:
             raise NotImplementedError
         self.case_counter = {"train": 0, "test": 0, "val": 0}
@@ -235,7 +238,11 @@ class CrowdSim(gym.Env):
             for i, human in enumerate(self.humans):
                 human.set_position(sim.getAgentPosition(i + 1))
             self.states.append(
-                [self.robot.get_full_state(), [human.get_full_state() for human in self.humans]]
+                [
+                    self.robot.get_full_state(),
+                    [human.get_full_state() for human in self.humans],
+                    self.centralized_planner.get_force_vectors(),
+                ]
             )
         del sim
         return self.human_times
@@ -356,7 +363,11 @@ class CrowdSim(gym.Env):
         )
         self.previous_distance = self.initial_distance
         self.states.append(
-            [self.robot.get_full_state(), [human.get_full_state() for human in self.humans]]
+            [
+                self.robot.get_full_state(),
+                [human.get_full_state() for human in self.humans],
+                self.centralized_planner.get_force_vectors(),
+            ]
         )
         # info contains the various contributions to the reward:
         self.episode_info = {
@@ -669,7 +680,11 @@ class CrowdSim(gym.Env):
                 raise ValueError("Unknown robot sensor type")
             # store state, action value and attention weights
             self.states.append(
-                [self.robot.get_full_state(), [human.get_full_state() for human in self.humans]]
+                [
+                    self.robot.get_full_state(),
+                    [human.get_full_state() for human in self.humans],
+                    self.centralized_planner.get_force_vectors(),
+                ]
             )
             if hasattr(self.robot.policy, "action_values"):
                 self.action_values.append(self.robot.policy.action_values)
@@ -773,6 +788,7 @@ class CrowdSim(gym.Env):
         y_offset = 0.11
         cmap = plt.cm.get_cmap("tab20")
         cmap2 = plt.cm.get_cmap("Set1")
+        force_cmap = plt.cm.get_cmap("tab10")
         robot_color = cmap2(1)
         goal_color = cmap2(2)
         arrow_color = cmap2(0)
@@ -948,7 +964,8 @@ class CrowdSim(gym.Env):
             robot = plt.Circle(robot_positions[0], self.robot.radius, fill=True, color=robot_color)
             ax.add_artist(robot)
             ax.add_artist(goal)
-            plt.legend([robot, goal], ["Robot", "Goal"], fontsize=16)
+            ax.legend([robot, goal], ["Robot", "Goal"], fontsize=12)
+
             # add humans and their numbers
             human_positions = [
                 [state[1][j].position for j in range(len(self.humans))] for state in self.states
@@ -972,6 +989,52 @@ class CrowdSim(gym.Env):
             for i, human in enumerate(humans):
                 ax.add_artist(human)
                 ax.add_artist(human_numbers[i])
+
+            # Add forces visualization
+            if self.visualize_force:
+                agent_forces = np.array(
+                    [[state[2][j] for j in range(len(self.humans) + 1)] for state in self.states]
+                )
+                force_orientations = [
+                    np.asarray(
+                        [[robot_positions[s], agent_forces[s][0]]]
+                        + [
+                            [human_positions[s][i], agent_forces[s][i + 1]]
+                            for i in range(len(self.humans))
+                        ]
+                    )
+                    for s in range(len(self.states))
+                ]
+                forces = np.array(
+                    [
+                        [
+                            patches.FancyArrowPatch(
+                                force_orientations[0][i][0],
+                                force_orientations[0][i][0] + force_orientations[0][i][1][j],
+                                color=force_cmap(j),
+                                arrowstyle=arrow_style,
+                            )
+                            for j in range(force_orientations[0][i][1].shape[0])
+                        ]
+                        for i in range(len(self.humans) + 1)
+                    ]
+                )
+                for agent in forces:
+                    for force in agent:
+                        ax.add_artist(force)
+                ax.legend(
+                    forces[0],
+                    [
+                        "DesiredF",
+                        "SocialF",
+                        "Obstacle",
+                        "GroupCoherenceF",
+                        "GroupRepulsiveF",
+                        "GroupGazeF",
+                    ],
+                    fontsize=12,
+                    loc="best",
+                )
             # add time annotation
             time = plt.text(-1, 5, "Time: {}".format(0), fontsize=16)
             ax.add_artist(time)
@@ -1048,6 +1111,7 @@ class CrowdSim(gym.Env):
                     ]
                     for arrow in arrows:
                         ax.add_artist(arrow)
+
                     # if (
                     #     self.attention_weights is not None
                     #     and self.robot.sensor.lower() == "coordinates"
@@ -1056,6 +1120,14 @@ class CrowdSim(gym.Env):
                     #     attention_scores[i].set_text(
                     #         "human {}: {:.2f}".format(i, self.attention_weights[frame_num][i])
                     #     )
+                if self.visualize_force:
+                    for i, agent in enumerate(forces):
+                        for j, force in enumerate(agent):
+                            force.set_positions(
+                                force_orientations[frame_num][i][0],
+                                force_orientations[frame_num][i][0]
+                                + force_orientations[frame_num][i][1][j],
+                            )
 
                 time.set_text("Time: {:.2f}".format(frame_num * self.time_step))
 
@@ -1096,7 +1168,7 @@ class CrowdSim(gym.Env):
 
             fig.canvas.mpl_connect("key_press_event", on_click)
             anim = animation.FuncAnimation(
-                fig, update, frames=len(self.states), interval=self.time_step * 1000
+                fig, update, frames=len(self.states), interval=self.time_step * 1000, blit=False
             )
             anim.running = True
 
