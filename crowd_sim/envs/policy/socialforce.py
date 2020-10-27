@@ -58,7 +58,7 @@ class SocialForce(Policy):
         return action
 
     def get_force_vectors(self):
-        return self.force_vectors
+        return self.force_vectors * np.array([1, 1, 1, 1, 1, 1]).reshape(1, 6, 1)
 
 
 class CentralizedSocialForce(SocialForce):
