@@ -583,7 +583,7 @@ class CrowdSim(gym.Env):
 
         forces = self.centralized_planner.get_force_vectors(coeff=[1] * 6)
 
-        force_dict = {force: 0 for force in self.force_list}
+        force_dict = {"avg_" + force: 0 for force in self.force_list}
         force_dict.update({"robot_social_force": 0})
         if forces is not None:
             # separate human and robot forces
@@ -591,7 +591,7 @@ class CrowdSim(gym.Env):
             human_forces = forces[:-1]
             # calculate average of human forces
             force_dict = {
-                force: np.average(np.hypot(*human_forces[:, i, :].transpose()))
+                "avg_" + force: np.average(np.hypot(*human_forces[:, i, :].transpose()))
                 for i, force in enumerate(self.force_list)
             }
             # add robot social force
