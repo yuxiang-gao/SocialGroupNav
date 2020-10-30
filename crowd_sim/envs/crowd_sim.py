@@ -71,6 +71,14 @@ class CrowdSim(gym.Env):
         self.train_val_sim = None
         self.test_sim = None
         # For visualization
+        self.force_list = [
+            "desired_force",
+            "social_force",
+            "obstacle_force",
+            "group_coherence_force",
+            "group_repulsive_force",
+            "group_gaze_force",
+        ]  # TODO Configure this?
         self.forces = None
         self.states = None
         self.action_values = None
@@ -210,7 +218,7 @@ class CrowdSim(gym.Env):
             *params,
             self.robot.radius,
             self.robot.v_pref,
-            self.robot.get_velocity()
+            self.robot.get_velocity(),
         )
         for human in self.humans:
             sim.addAgent(
@@ -305,13 +313,15 @@ class CrowdSim(gym.Env):
 
                 human_num = self.human_num if self.robot.policy.multiagent_training else 1
                 seed = counter_offset[phase] + self.case_counter[phase]
-                # seed = 42
                 if phase in ["train", "val"]:
                     self.set_scene(self.train_val_sim, seed)
                 else:
                     self.set_scene(self.test_sim, seed)
                 self.scene_manager.spawn(
-                    num_human=human_num, use_groups=self.use_groups, group_sizes=None
+                    num_human=human_num,
+                    set_robot=True,
+                    use_groups=self.use_groups,
+                    group_sizes=None,
                 )
                 (
                     self.humans,
@@ -571,25 +581,22 @@ class CrowdSim(gym.Env):
                 reward += discomfort
                 self.episode_info["discomfort"] += discomfort
 
-        forces = self.centralized_planner.get_forces()
+        forces = self.centralized_planner.get_force_vectors(coeff=[1] * 6)
 
-        # get group cohesive force
-        total_group_cohesive_force = 0
-        total_group_gaze_force = 0
-
+        force_dict = {force: 0 for force in self.force_list}
+        force_dict.update({"robot_social_force": 0})
         if forces is not None:
-            grp_cohesive_force = forces[3].get_force()  # TODO remove this hard coded index
-            total_group_cohesive_force = np.sum(
-                np.abs(grp_cohesive_force)
-            )  # TODO: verify from Yuxiang if we should normalize by numgroups
-            total_group_cohesive_force = total_group_cohesive_force / self.num_groups
-
-            grp_gaze_force = forces[5].get_force()
-            total_group_gaze_force = np.sum(np.abs(grp_gaze_force))
-            total_group_gaze_force = total_group_gaze_force / self.num_groups
-
-        self.episode_info["group_cohesive_force"] = total_group_cohesive_force
-        self.episode_info["group_gaze_force"] = total_group_gaze_force
+            # separate human and robot forces
+            robot_forces = forces[-1]
+            human_forces = forces[:-1]
+            # calculate average of human forces
+            force_dict = {
+                force: np.average(np.hypot(*human_forces[:, i, :].transpose()))
+                for i, force in enumerate(self.force_list)
+            }
+            # add robot social force
+            force_dict.update({"robot_social_force": np.hypot(*robot_forces[1])})
+        self.episode_info.update(force_dict)
 
         # penalize group intersection
         robot_pos = [self.robot.px, self.robot.py]
@@ -918,7 +925,7 @@ class CrowdSim(gym.Env):
         elif mode == "video":
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            size = 10
+            size = 15
             ax.set_xlim(-size, size)
             ax.set_ylim(-size, size)
             ax.set_xlabel("x(m)", fontsize=16)
@@ -1025,21 +1032,24 @@ class CrowdSim(gym.Env):
                     for force in agent:
                         ax.add_artist(force)
                 ax.legend(
-                    forces[0],
-                    [
-                        "DesiredF",
-                        "SocialF",
-                        "Obstacle",
-                        "GroupCoherenceF",
-                        "GroupRepulsiveF",
-                        "GroupGazeF",
-                    ],
-                    fontsize=12,
-                    loc="best",
+                    forces[0], self.force_list, fontsize=12, loc="lower right",
                 )
+
+                def generate_force_text(frame_num):
+                    return (
+                        f"robot social: {norm(force_orientations[frame_num][-1][1][1]):.5f}\n"
+                        f"Group Social avg: {sum([norm(x) for x in [force_orientations[frame_num][i][1][1] for i in range(len(self.humans))]])/len(self.humans):.5f}\n"
+                        f"Group Coherence avg: {sum([norm(x) for x in [force_orientations[frame_num][i][1][3] for i in range(len(self.humans))]])/len(self.humans):.5f}\n"
+                        f"Group Gaze avg: {sum([norm(x) for x in [force_orientations[frame_num][i][1][5] for i in range(len(self.humans))]])/len(self.humans):.5f}\n"
+                    )
+
+                # socialforcecoherence
+                force_text = plt.text(-15, 10, generate_force_text(0), multialignment="left",)
+                ax.add_artist(force_text)
             # add time annotation
             time = plt.text(-1, 5, "Time: {}".format(0), fontsize=16)
             ax.add_artist(time)
+
             # compute attention scores
             # if self.attention_weights is not None and self.robot.sensor.lower() == "coordinates":
             #     attention_scores = [
@@ -1130,6 +1140,7 @@ class CrowdSim(gym.Env):
                                 force_orientations[frame_num][i][0]
                                 + force_orientations[frame_num][i][1][j],
                             )
+                    force_text.set_text(generate_force_text(frame_num))
 
                 time.set_text("Time: {:.2f}".format(frame_num * self.time_step))
 
