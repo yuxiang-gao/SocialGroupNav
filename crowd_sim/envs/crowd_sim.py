@@ -102,8 +102,6 @@ class CrowdSim(gym.Env):
 
         self.app = None
 
-        self.track_force = False
-
     def configure(self, config):
         self.config = config
         # Simulation:
@@ -399,8 +397,9 @@ class CrowdSim(gym.Env):
             "did_succeed": 0.0,
             "group_intersection_violations": {},
         }
-
-        self.track_force = False
+        # Initiate forces log
+        self.episode_info.update({"avg_" + force: [] for force in self.force_list})
+        self.episode_info.update({"robot_social_force": []})
 
         return ob
 
@@ -589,25 +588,17 @@ class CrowdSim(gym.Env):
 
         forces = self.centralized_planner.get_force_vectors(coeff=[1] * 6)
 
-        force_dict = {"avg_" + force: 0 for force in self.force_list}
-        force_dict.update({"robot_social_force": 0})
         if forces is not None:
             # separate human and robot forces
             robot_forces = forces[-1]
             human_forces = forces[:-1]
-            # calculate average of human forces
-            force_dict = {
-                "avg_" + force: np.average(np.hypot(*human_forces[:, i, :].transpose()))
-                for i, force in enumerate(self.force_list)
-            }
+            # calculate average of human forces and append them to the log
+            for i, force in enumerate(self.force_list):
+                self.episode_info.get("avg_" + force).append(
+                    np.average(np.hypot(*human_forces[:, i, :].transpose()))
+                )
             # add robot social force
-            force_dict.update({"robot_social_force": np.hypot(*robot_forces[1])})
-
-        if force_dict["robot_social_force"] > 1.0:
-            self.track_force = True
-
-        if self.track_force:
-            self.episode_info.update(force_dict)
+            self.episode_info.get("robot_social_force").append(np.hypot(*robot_forces[1]))
 
         # penalize group intersection
         robot_pos = [self.robot.px, self.robot.py]
