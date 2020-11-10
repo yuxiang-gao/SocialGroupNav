@@ -102,6 +102,8 @@ class CrowdSim(gym.Env):
 
         self.app = None
 
+        self.track_force = False
+
     def configure(self, config):
         self.config = config
         # Simulation:
@@ -397,6 +399,9 @@ class CrowdSim(gym.Env):
             "did_succeed": 0.0,
             "group_intersection_violations": {},
         }
+
+        self.track_force = False
+
         return ob
 
     def onestep_lookahead(self, action):
@@ -597,7 +602,12 @@ class CrowdSim(gym.Env):
             }
             # add robot social force
             force_dict.update({"robot_social_force": np.hypot(*robot_forces[1])})
-        self.episode_info.update(force_dict)
+
+        if force_dict["robot_social_force"] > 1.0:
+            self.track_force = True
+
+        if self.track_force:
+            self.episode_info.update(force_dict)
 
         # penalize group intersection
         robot_pos = [self.robot.px, self.robot.py]
