@@ -395,6 +395,7 @@ class CrowdSim(gym.Env):
             "did_collide": 0.0,
             "did_collide_static_obstacle": 0.0,
             "did_succeed": 0.0,
+            "group_intersection_violations": {},
         }
         return ob
 
@@ -603,7 +604,7 @@ class CrowdSim(gym.Env):
 
         convex = 1
 
-        for group in self.group_membership:
+        for idx, group in enumerate(self.group_membership):
             # get the members of the group
             points = []
             for human_id in group:
@@ -636,6 +637,9 @@ class CrowdSim(gym.Env):
                 group_discomfort = -self.group_discomfort_penalty
                 reward += group_discomfort
                 self.episode_info["group_discomfort"] += group_discomfort
+
+                # we only want to track number of violations once per group per episode
+                self.episode_info["group_intersection_violations"][idx] = 1.0
 
         if (
             len(human_distances) > 0
