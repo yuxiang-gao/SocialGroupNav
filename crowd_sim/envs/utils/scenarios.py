@@ -96,7 +96,7 @@ class ScenarioConfig:
         if self.scenario == Scenario.CIRCLE_CROSSING:
             angle = self.rng.random() * np.pi * 2
             p = self.circle_radius * np.array([np.cos(angle), np.sin(angle)])
-            return p, -p
+            return p, -p * 100
         elif self.scenario == Scenario.LONG_CORRIDOR:
             return self.spawn_positions[0], self.spawn_positions[1]
         else:
@@ -149,6 +149,7 @@ class SceneManager(object):
         self.robot_radius = self.config.getfloat("robot", "radius")
         self.discomfort_dist = self.config.getfloat("reward", "discomfort_dist")
         self.randomize_attributes = self.config.getboolean("env", "randomize_attributes")
+        self.max_groups = self.config.getfloat("sim", "max_group_num")
 
     def set_scenario(self, scenario, seed):
         self.humans = []
@@ -189,14 +190,17 @@ class SceneManager(object):
         if use_groups:
             if group_sizes is None:
                 group_sizes = []
-                while True:
-                    size = self.rng.poisson(group_size_lambda) + 1
-                    if sum(group_sizes) + size > num_human:
-                        if num_human > sum(group_sizes):
-                            group_sizes.append(num_human - sum(group_sizes))
-                        break
-                    else:
-                        group_sizes.append(size)
+                if self.max_groups == 1:
+                    group_sizes.append(num_human)
+                else:
+                    while True:
+                        size = self.rng.poisson(group_size_lambda) + 1
+                        if sum(group_sizes) + size > num_human:
+                            if num_human > sum(group_sizes):
+                                group_sizes.append(num_human - sum(group_sizes))
+                            break
+                        else:
+                            group_sizes.append(size)
         else:
             group_sizes = np.ones(num_human)
         human_idx = np.arange(num_human)
