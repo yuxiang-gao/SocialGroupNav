@@ -396,7 +396,14 @@ class CrowdSim(gym.Env):
             "did_collide_static_obstacle": 0.0,
             "did_succeed": 0.0,
             "group_intersection_violations": {},
+            "pedestrian_distance_traversed": {},
+            "robot_distance_traversed": list(),
         }
+
+        human_num = len(self.humans)
+        for i in range(human_num):
+            self.episode_info["pedestrian_distance_traversed"][i] = list()
+
         # Initiate forces log
         self.episode_info.update({"avg_" + force: [] for force in self.force_list})
         self.episode_info.update({"robot_social_force": []})
@@ -600,8 +607,18 @@ class CrowdSim(gym.Env):
             # add robot social force
             self.episode_info.get("robot_social_force").append(np.hypot(*robot_forces[1]))
 
+        human_num = len(self.humans)
+        for i in range(human_num):
+            px = self.humans[i].px
+            py = self.humans[i].py
+            self.episode_info["pedestrian_distance_traversed"][i].append([px,py])
+
+
         # penalize group intersection
         robot_pos = [self.robot.px, self.robot.py]
+
+        self.episode_info["robot_distance_traversed"].append(robot_pos)
+
 
         convex = 1
 
