@@ -397,12 +397,17 @@ class CrowdSim(gym.Env):
             "did_succeed": 0.0,
             "group_intersection_violations": {},
             "pedestrian_distance_traversed": {},
+            "pedestrian_goal": {},
             "robot_distance_traversed": list(),
+            "pedestrian_velocity": {},
+            "robot_velocity": list(),
         }
 
         human_num = len(self.humans)
         for i in range(human_num):
             self.episode_info["pedestrian_distance_traversed"][i] = list()
+            self.episode_info["pedestrian_goal"][i] = list()
+            self.episode_info["pedestrian_velocity"][i] = list()
 
         # Initiate forces log
         self.episode_info.update({"avg_" + force: [] for force in self.force_list})
@@ -611,13 +616,23 @@ class CrowdSim(gym.Env):
         for i in range(human_num):
             px = self.humans[i].px
             py = self.humans[i].py
+            gx = self.humans[i].gx
+            gy = self.humans[i].gy
+
             self.episode_info["pedestrian_distance_traversed"][i].append([px,py])
+            self.episode_info["pedestrian_goal"][i].append([gx,gy])
+
+            self.episode_info["pedestrian_velocity"][i].append([vx,vy])
+
 
 
         # penalize group intersection
         robot_pos = [self.robot.px, self.robot.py]
+        robot_vel = [self.robot.vx, self.robot.vy]
 
         self.episode_info["robot_distance_traversed"].append(robot_pos)
+        self.episode_info["robot_velocity"].append(robot_vel)
+
 
 
         convex = 1
@@ -1072,6 +1087,13 @@ class CrowdSim(gym.Env):
             time = plt.text(-1, 5, "Time: {}".format(0), fontsize=16)
             ax.add_artist(time)
 
+            ped_traj_len = plt.text(-15, 9, "Avg. Ped. Traj. Len.: {}".format(0), fontsize=8)
+            ped_avg_speed = plt.text(-15, 7, "Avg. Ped. Speed.: {}".format(0), fontsize=8)
+
+            ax.add_artist(ped_traj_len)
+            ax.add_artist(ped_avg_speed)
+
+
             # compute attention scores
             # if self.attention_weights is not None and self.robot.sensor.lower() == "coordinates":
             #     attention_scores = [
@@ -1125,13 +1147,34 @@ class CrowdSim(gym.Env):
                 ax.add_artist(arrow)
             global_step = 0
 
+            avg_ped_traj = 0.0
+            avg_robot_traj = 0.0
+
+
             def update(frame_num):
                 nonlocal global_step
                 nonlocal arrows
+                nonlocal avg_ped_traj
+                num_peds = len(humans)
+
                 global_step = frame_num
                 robot.center = robot_positions[frame_num]
+
+                #print ("avg_ped_traj 1: ", avg_ped_traj)
                 for i, human in enumerate(humans):
+
                     human.center = human_positions[frame_num][i]
+                    if frame_num < len(human_positions) - 1:
+                        start = np.array(human.center)
+                        end = np.array(human_positions[frame_num+1][i])
+                        delta = np.linalg.norm(end - start)
+                        #print ("delta: ", delta)
+                        avg_ped_traj += delta
+                        #print("avg_ped_traj2: ", avg_ped_traj)
+
+
+
+
                     human_numbers[i].set_position(
                         (human.center[0] - x_offset, human.center[1] - y_offset)
                     )
@@ -1164,7 +1207,20 @@ class CrowdSim(gym.Env):
                             )
                     force_text.set_text(generate_force_text(frame_num))
 
+                avg_ped_traj_per_ped = avg_ped_traj / num_peds
+
+                speed = avg_ped_traj_per_ped / ((frame_num + 1) * self.time_step)
+
+                ped_avg_speed.set_text(
+                    "Avg Ped Traj Len: {:.2f}, Total Steps: {:.0f}, Norm Per Step: {:.4f}".format(avg_ped_traj_per_ped,
+                                                                                                  len(human_positions),
+                                                                                                  avg_ped_traj_per_ped / (
+                                                                                                              frame_num + 1)))
+
+                ped_traj_len.set_text("Avg. Ped. Speed.:  {:.4f}".format(speed))
+
                 time.set_text("Time: {:.2f}".format(frame_num * self.time_step))
+
 
             def plot_value_heatmap():
                 assert self.robot.kinematics == "holonomic"
